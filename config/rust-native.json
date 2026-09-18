@@ -1,0 +1,15 @@
+{
+  "rootDir": "../src",
+  "entryPoint": "rust/main.ts",
+  "outDir": "../out/rust-native",
+  "cacheDir": "../.temp/compiler-cache",
+  "targets": [{
+    "id": "rust",
+    "surfaces": ["js"],
+    "options": {
+      "crateName": "bench_native_rust",
+      "edition": "2024",
+      "outputType": "bin"
+    }
+  }]
+}

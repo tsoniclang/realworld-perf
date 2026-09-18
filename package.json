@@ -1,0 +1,22 @@
+{
+  "name": "@tsonic/realworld-perf",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "build": "bash scripts/guard.sh scripts/build.mjs",
+    "test": "bash scripts/guard.sh scripts/verify.mjs",
+    "test:unit": "node --test test/*.test.mjs",
+    "bench": "bash scripts/guard.sh scripts/benchmark.mjs"
+  },
+  "devDependencies": {
+    "@tsonic/cli": "0.1.1",
+    "@tsonic/target-csharp": "0.1.1",
+    "@tsonic/target-rust": "0.1.1",
+    "@tsonic/csharp-nodejs": "0.1.1",
+    "@tsonic/rust-nodejs": "0.1.1",
+    "@types/node": "22.20.3",
+    "typescript": "7.0.2"
+  }
+}
