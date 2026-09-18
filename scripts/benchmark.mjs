@@ -53,7 +53,7 @@ export function benchmark(options) {
         writeFileSync(resolve(cwd, "fixture.txt"), fixture.payload);
         try {
           const command = lane.kind === "node" ? process.execPath : lane.kind === "csharp" ? "dotnet" : resolve(root, "out/cargo/release", lane.crate);
-          const args = lane.kind === "node" ? [resolve(root, "scripts/node-entry.mjs")] : lane.kind === "csharp" ? [resolve(root, "out/bin", lane.id, `${lane.assembly}.dll`)] : [];
+          const args = lane.kind === "node" ? [resolve(root, "out/node/node/start.js")] : lane.kind === "csharp" ? [resolve(root, "out/bin", lane.id, `${lane.assembly}.dll`)] : [];
           const child = runCommand(command, args, { cwd, timeout: 60000, log: resolve(cwd, "process.log") });
           if (child.stderr.trim() !== "") throw new Error(`Unexpected stderr: ${child.stderr}`);
           const result = JSON.parse(child.stdout.trim());

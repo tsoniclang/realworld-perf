@@ -1,6 +1,6 @@
 {
   "rootDir": "src",
-  "entryPoint": "node/main.ts",
+  "entryPoint": "node/start.ts",
   "outDir": "out/csharp-node",
   "cacheDir": ".temp/compiler-cache",
   "targets": [{

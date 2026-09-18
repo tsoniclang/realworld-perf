@@ -3,15 +3,25 @@
 Run the same TypeScript workloads on plain Node.js and on Tsonic's C# and Rust
 targets. Each report includes Node timings, not just native-to-native ratios.
 
+**Status:** the five-lane suite is implemented, but its complete test gate does
+not pass yet. The published Rust compiler rejects the native filesystem adapter.
+Four lanes build and pass their workload checks; C# also emits a nullable-local
+warning. No complete performance comparison has been published. See
+[verification status](docs/verification.md) for the evidence and remaining work.
+
 ## The comparisons
 
 | Lane | Source | Execution |
 | --- | --- | --- |
 | Node.js | `src/node` + `src/shared` | TypeScript compiled to ordinary JavaScript; Node/V8 |
 | C# Node APIs | Exactly the same source as Node | Generated C#, .NET Release build, C# Node runtime |
-| Rust Node APIs | Exactly the same source as Node | Generated Rust, Cargo release build, Rust Node runtime |
+| Rust Node APIs | Same workload and platform modules as Node; exported `main` entry | Generated Rust, Cargo release build, Rust Node runtime |
 | C# native APIs | `src/csharp` + the same `src/shared` | `System.IO` and `Stopwatch`, .NET Release build |
 | Rust native APIs | `src/rust` + the same `src/shared` | `std::fs` and `Instant`, Cargo release build |
+
+Node and C# execute the ordinary `start.ts` top-level call. The Rust target
+selects the exported `main` function instead; it receives the same imported
+workload and platform source, without running initialization twice.
 
 All five lanes use the same arithmetic, CSV algorithm and benchmark driver.
 Native variants change only filesystem and clock adapters. They still select
