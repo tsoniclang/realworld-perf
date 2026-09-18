@@ -49,7 +49,7 @@ export function benchmark(options) {
       for (const lane of laneOrder(round)) {
         const cwd = resolve(workRoot, `${workload.id}-${round}-${lane.id}`);
         mkdirSync(cwd);
-        writeFileSync(resolve(cwd, "input.json"), JSON.stringify(input));
+        writeFileSync(resolve(cwd, "input.txt"), [input.benchmark, input.size, input.iterations, input.warmup].join("\n"));
         writeFileSync(resolve(cwd, "fixture.txt"), fixture.payload);
         try {
           const command = lane.kind === "node" ? process.execPath : lane.kind === "csharp" ? "dotnet" : resolve(root, "out/cargo/release", lane.crate);

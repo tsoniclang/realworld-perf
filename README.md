@@ -48,7 +48,7 @@ Only public npm packages are used. No sibling Tsonic checkout, global Tsonic or
 local package link is needed. The npm lockfile pins the installed compiler and
 runtime packages. Native crate versions are recorded in the generated Cargo
 lockfiles and build artifact hashes; native toolchains are reported, not silently
-installed or changed. C# uses net10.0 in `config/csharp-*.json`.
+installed or changed. C# uses net10.0 in `tsonic.csharp-*.json`.
 
 `npm test` runs harness tests, compiles all five lanes, then checks all 25 cells
 twice with small inputs. It collects failures rather than dropping failed lanes.

@@ -8,13 +8,13 @@ export function now(): number {
 }
 
 export function readText(path: string): string {
-  return read_to_string(path).unwrap();
+  return read_to_string<string>(path).unwrap();
 }
 
 export function writeText(path: string, contents: string): void {
-  write(path, contents).unwrap();
+  write<string, string>(path, contents).unwrap();
 }
 
 export function fileSize(path: string): number {
-  return Number(metadata(path).unwrap().len());
+  return Number(metadata<string>(path).unwrap().len());
 }

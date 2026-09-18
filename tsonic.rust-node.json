@@ -1,8 +1,8 @@
 {
-  "rootDir": "../src",
+  "rootDir": "src",
   "entryPoint": "node/main.ts",
-  "outDir": "../out/rust-node",
-  "cacheDir": "../.temp/compiler-cache",
+  "outDir": "out/rust-node",
+  "cacheDir": ".temp/compiler-cache",
   "targets": [{
     "id": "rust",
     "surfaces": ["js"],

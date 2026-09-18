@@ -29,7 +29,7 @@ export function buildAll() {
         artifacts.push(...treeFiles(resolve(root, "out/node")));
         continue;
       }
-      const generated = runCommand(resolve(root, "node_modules/.bin/tsonic"), ["build", "--project", `config/${lane.id}.json`], {
+      const generated = runCommand(resolve(root, "node_modules/.bin/tsonic"), ["build", "--project", `tsonic.${lane.id}.json`], {
         log: resolve(logRoot, `${lane.id}-generate.log`),
         timeout: 900000,
       });
@@ -37,7 +37,7 @@ export function buildAll() {
       if (lane.kind === "csharp") {
         const project = resolve(root, "out", lane.id, "csharp", `${lane.assembly}.csproj`);
         const output = resolve(root, "out/bin", lane.id);
-        built = runCommand("dotnet", ["build", project, "--configuration", "Release", "--nologo", "-m:1", "--output", output], { log: resolve(logRoot, `${lane.id}-build.log`) });
+        built = runCommand("dotnet", ["build", project, "--configuration", "Release", "--nologo", "--disable-build-servers", "-m:1", "--output", output], { log: resolve(logRoot, `${lane.id}-build.log`) });
         artifacts.push(...treeFiles(output));
       } else {
         const project = resolve(root, "out", lane.id, "rust/Cargo.toml");

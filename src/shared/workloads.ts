@@ -20,7 +20,7 @@ export function sumCsvAmounts(contents: string): number {
     const line = lines[index];
     if (line.length === 0) continue;
     const fields = line.split(",");
-    total += Number(fields[2]);
+    total += parseInt(fields[2], 10);
   }
   return total;
 }

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { root } from "./process.mjs";
+import { lanes } from "./catalog.mjs";
 
 export function treeFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))
@@ -14,7 +15,8 @@ export function fileDigest(path) {
 
 export function inputFingerprint() {
   const files = ["package.json", "package-lock.json", "tsconfig.node.json"].map((path) => resolve(root, path));
-  for (const directory of ["src", "config", "scripts"]) files.push(...treeFiles(resolve(root, directory)));
+  files.push(...lanes.filter((lane) => lane.kind !== "node").map((lane) => resolve(root, `tsonic.${lane.id}.json`)));
+  for (const directory of ["src", "scripts"]) files.push(...treeFiles(resolve(root, directory)));
   const hash = createHash("sha256");
   for (const path of files.sort()) hash.update(`${relative(root, path)}\0${fileDigest(path)}\0`);
   return hash.digest("hex");

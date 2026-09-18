@@ -1,8 +1,8 @@
 {
-  "rootDir": "../src",
+  "rootDir": "src",
   "entryPoint": "csharp/main.ts",
-  "outDir": "../out/csharp-native",
-  "cacheDir": "../.temp/compiler-cache",
+  "outDir": "out/csharp-native",
+  "cacheDir": ".temp/compiler-cache",
   "targets": [{
     "id": "csharp",
     "surfaces": ["js"],
