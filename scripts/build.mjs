@@ -11,7 +11,7 @@ export function buildAll() {
   const versions = {
     node: process.version,
     v8: process.versions.v8,
-    typescript: runCommand(process.execPath, ["node_modules/typescript/bin/tsc", "--version"]).stdout.trim(),
+    typescript: runCommand(resolve(root, "node_modules/.bin/tsc"), ["--version"]).stdout.trim(),
     dotnetSdk: runCommand("dotnet", ["--version"]).stdout.trim(),
     dotnetRuntimes: runCommand("dotnet", ["--list-runtimes"]).stdout.trim(),
     rustc: runCommand("rustc", ["--version"]).stdout.trim(),
@@ -24,7 +24,7 @@ export function buildAll() {
     try {
       console.log(`Building ${lane.label}`);
       if (lane.kind === "node") {
-        const compile = runCommand(process.execPath, ["node_modules/typescript/bin/tsc", "--project", "tsconfig.node.json"], { log: resolve(logRoot, `${lane.id}.log`) });
+        const compile = runCommand(resolve(root, "node_modules/.bin/tsc"), ["--project", "tsconfig.node.json"], { log: resolve(logRoot, `${lane.id}.log`) });
         timings.push({ lane: lane.id, generationMs: compile.wallMs, nativeBuildMs: 0 });
         artifacts.push(...treeFiles(resolve(root, "out/node")));
         continue;
