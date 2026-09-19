@@ -17,17 +17,21 @@ C# also emits an existing nullable-local warning. See
 | Node.js | `src/node` + `src/shared` | TypeScript compiled to ordinary JavaScript; Node/V8 |
 | C# Node APIs | Exactly the same source as Node | Generated C#, Release NativeAOT, C# Node runtime |
 | Rust Node APIs | Same workload and platform modules as Node; exported `main` entry | Generated Rust, Cargo release build, Rust Node runtime |
-| C# native APIs | `src/csharp` + the same `src/shared` | `System.IO` and `Stopwatch`, Release NativeAOT |
-| Rust native APIs | `src/rust` + the same `src/shared` | `std::fs` and `Instant`, Cargo release build |
+| C# native APIs | `src/csharp` + `src/native` | Explicit integer annotations, `System.IO` and `Stopwatch`, Release NativeAOT |
+| Rust native APIs | `src/rust` + the same `src/native` | Explicit integer annotations, `std::fs` and `Instant`, Cargo release build |
 
 Node and C# execute the ordinary `start.ts` top-level call. The Rust target
 selects the exported `main` function instead; it receives the same imported
 workload and platform source, without running initialization twice.
 
-All five lanes use the same arithmetic, CSV algorithm and benchmark driver.
-Native variants change only filesystem and clock adapters. They still select
-the JavaScript source profile for the shared language operations; this is not
-a claim that the entire application avoids JS-semantic runtime types. Neither
+All five lanes use the same prime and CSV algorithms. A test compares their
+JavaScript after type erasure. The native variants annotate loop counters and
+prime divisors with neutral `int32` and narrow validated input dimensions before
+timing. Accumulated totals/checksums remain `number`: the admitted input range can
+exceed a signed 32-bit sum. The native driver mirrors the Node driver with these
+explicit selections, without changing warm-up, dispatch or result checks.
+They still select the JavaScript source profile for strings, arrays and output;
+this is not a claim that every representation is native-optimal. Neither
 compiled Node lane embeds Node/V8. These are native implementations of Node APIs.
 
 | Workload | One iteration | Checked result |
@@ -108,7 +112,7 @@ there is no parallel-agent or concurrent benchmarking machinery.
 
 ## Inspect the programs
 
-Source: `src/shared`, `src/node`, `src/csharp`, `src/rust`.
+Source: `src/shared`, `src/native`, `src/node`, `src/csharp`, `src/rust`.
 Generated JavaScript: `out/node`. Generated C#/Rust: `out/<lane>/<target>`.
 Build logs and individual execution evidence: `.temp/`. Generated programs,
 binaries, caches and local measurement reports are not committed.
