@@ -3,11 +3,12 @@
 Run the same TypeScript workloads on plain Node.js and on Tsonic's C# and Rust
 targets. Each report includes Node timings, not just native-to-native ratios.
 
-**Status:** all five lanes pass with the packed Rust target fix, and both C#
-lanes run as NativeAOT executables. There are 50 passing correctness checks and
-125 passing full-size measurements. Published Rust target 0.1.1 still needs a
-release containing that fix before the ordinary public-package install passes.
-C# also emits an existing nullable-local warning. See
+**Status:** all five lanes pass with the packed compiler candidates, and both C#
+lanes run as NativeAOT executables. There are 50 passing correctness checks,
+35 numeric-boundary checks and 125 passing full-size measurements. Public pins
+still need the compiler release; Rust target 0.1.1 also lacks the earlier native
+import fix. C# retains an existing nullable-local warning, and the default Rust
+native read benchmark has a documented code-placement-sensitive slowdown. See
 [verification and timings](docs/verification.md) for the results and release boundary.
 
 ## The comparisons
