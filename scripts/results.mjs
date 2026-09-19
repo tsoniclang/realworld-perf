@@ -26,6 +26,7 @@ export function formatReport(record) {
     `Status: ${record.failures.length === 0 ? "complete" : "INCOMPLETE — build or execution failures remain; not full certification"}.`, "",
     `Mode: ${record.verification ? "correctness smoke; not performance evidence" : "measured"}. Samples per cell: ${record.samples}. Warm-up batches per process: ${record.warmup}.`, "",
     "Times are median milliseconds per workload iteration. Parentheses are elapsed time / Node time; lower is better. Native means native I/O/clock APIs, not a different arithmetic or CSV algorithm.", "",
+    "Both C# lanes use Release NativeAOT executables with Speed optimization, not managed DLLs or a JIT. Rust uses Cargo release; Node uses V8.", "",
     `| Workload | ${lanes.map((lane) => lane.label).join(" | ")} |`,
     `| --- | ${lanes.map(() => "---:").join(" | ")} |`,
   ];

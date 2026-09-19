@@ -5,9 +5,9 @@ targets. Each report includes Node timings, not just native-to-native ratios.
 
 **Status:** the five-lane suite is implemented, but its complete test gate does
 not pass yet. The published Rust compiler rejects the native filesystem adapter.
-Four lanes build and pass their workload checks; C# also emits a nullable-local
-warning. Reports retain the working-lane timings but explicitly mark a comparison
-incomplete if any lane fails. See
+The earlier managed-C# run passed four lanes; both C# lanes now require NativeAOT
+and are being reverified. C# also emits a nullable-local warning. Reports retain
+working-lane timings but explicitly mark a comparison incomplete if any lane fails. See
 [verification status](docs/verification.md) for the evidence and remaining work.
 
 ## The comparisons
@@ -15,9 +15,9 @@ incomplete if any lane fails. See
 | Lane | Source | Execution |
 | --- | --- | --- |
 | Node.js | `src/node` + `src/shared` | TypeScript compiled to ordinary JavaScript; Node/V8 |
-| C# Node APIs | Exactly the same source as Node | Generated C#, .NET Release build, C# Node runtime |
+| C# Node APIs | Exactly the same source as Node | Generated C#, Release NativeAOT, C# Node runtime |
 | Rust Node APIs | Same workload and platform modules as Node; exported `main` entry | Generated Rust, Cargo release build, Rust Node runtime |
-| C# native APIs | `src/csharp` + the same `src/shared` | `System.IO` and `Stopwatch`, .NET Release build |
+| C# native APIs | `src/csharp` + the same `src/shared` | `System.IO` and `Stopwatch`, Release NativeAOT |
 | Rust native APIs | `src/rust` + the same `src/shared` | `std::fs` and `Instant`, Cargo release build |
 
 Node and C# execute the ordinary `start.ts` top-level call. The Rust target
@@ -46,7 +46,9 @@ Writes are buffered, without fsync; they do not measure durable storage latency.
 
 The guarded runner currently requires **Linux with a systemd user session**.
 Install Node.js 22.18 or later, the .NET 10 SDK, and Rust through rustup. Install
-the system C/C++ linker toolchain as well (`build-essential` on Debian/Ubuntu).
+the system C/C++ linker toolchain and NativeAOT dependencies (`build-essential`,
+`clang` and `zlib1g-dev` on Debian/Ubuntu). See the
+[.NET NativeAOT prerequisites](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/).
 
 ```sh
 rustup component add rust-src rustfmt
@@ -91,8 +93,10 @@ samples, min/max, payload hashes, tool versions and build fingerprints are retai
   in structure, but their target representations need not have identical costs.
 - Compilation is reported separately. Process wall time includes startup, setup,
   warm-up, the workload and shutdown; it is not presented as pure startup time.
-- C# is a managed Release/JIT comparison, not NativeAOT. Node uses its normal V8
-  JIT. Warm-up is finite, so this is not a guarantee that every tier has stabilized.
+- Both C# lanes publish Release NativeAOT for the current runtime, with Speed
+  optimization, and run the native executable directly. There is no JIT lane.
+  Node uses its normal V8 JIT. Warm-up is finite, so this is not a guarantee
+  that every V8 tier has stabilized.
 - Numbers from one machine are observations, not universal speed claims. Run on
   an otherwise idle machine and examine sample spread before drawing conclusions.
 

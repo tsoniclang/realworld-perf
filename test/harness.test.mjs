@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { createFixture, laneOrder, lanes, workloads } from "../scripts/catalog.mjs";
-import { readOptions } from "../scripts/benchmark.mjs";
+import { readOptions, executionCommand } from "../scripts/benchmark.mjs";
+import { csharpPublishArguments } from "../scripts/build.mjs";
 import { formatReport, statistics, validateResult } from "../scripts/results.mjs";
 import { runCommand } from "../scripts/process.mjs";
 
@@ -13,6 +15,24 @@ test("five workloads cover all five lanes with a real Node baseline", () => {
     assert.equal(laneOrder(round)[0].id, lanes[round].id);
     assert.deepEqual(laneOrder(round).map((lane) => lane.id).sort(), lanes.map((lane) => lane.id).sort());
   }
+});
+
+test("both C# lanes publish and execute NativeAOT rather than managed DLLs", () => {
+  const args = csharpPublishArguments("project.csproj", "output");
+  assert.equal(args[0], "publish");
+  assert.ok(args.includes("--use-current-runtime"));
+  assert.equal(args[args.indexOf("--configuration") + 1], "Release");
+  assert.equal(args[args.indexOf("--self-contained") + 1], "true");
+  assert.ok(args.includes("-p:IlcOptimizationPreference=Speed"));
+  for (const lane of lanes.filter((candidate) => candidate.kind === "csharp")) {
+    const config = JSON.parse(readFileSync(new URL(`../tsonic.${lane.id}.json`, import.meta.url), "utf8"));
+    assert.equal(config.targets[0].options.publishAot, true);
+    const execution = executionCommand(lane);
+    assert.ok(execution.command.endsWith(`/out/native/${lane.id}/${lane.assembly}`));
+    assert.deepEqual(execution.args, []);
+    assert.doesNotMatch(execution.command, /\.dll$/u);
+  }
+  assert.throws(() => executionCommand({ id: "invalid", kind: "invalid" }), /Unknown execution lane/u);
 });
 
 test("fixtures have independent known answers, Unicode and exact byte counts", () => {

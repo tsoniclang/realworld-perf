@@ -2,7 +2,19 @@
 
 Updated September 19, 2026. This is a checkpoint, not a passing certification.
 
-## Results
+## Current NativeAOT transition
+
+Both C# configurations now require NativeAOT. The runner publishes Release with
+Speed optimization and executes the resulting native program, not a DLL through
+dotnet. The harness tests pass 9/9. NativeAOT execution has not yet been verified;
+this machine currently lacks clang and zlib development files.
+
+Rust target fix `12f6d89` passes the native filesystem and numeric conversion
+regressions. Its complete target gate is running. Published target 0.1.1 still
+lacks that fix; a packed-candidate proof is distinct from the default npm install.
+No benchmark workload source has changed.
+
+## Earlier managed-C# results (not NativeAOT)
 
 | Gate | Result |
 | --- | --- |
@@ -52,7 +64,7 @@ five independent defects.
 A separate minimal filesystem program reproduces the generic-call rejection
 without the benchmark driver, JSON or numeric conversion. Explicit type arguments
 do not resolve it. The rejection point is established; the underlying compiler
-fix has not been implemented or certified.
+fix is now implemented in the candidate above, not in published 0.1.1.
 
 No generated Rust was edited, no compiler package was patched locally, and no
 Node API was relabeled as a native API. Fixing these compiler contracts needs a

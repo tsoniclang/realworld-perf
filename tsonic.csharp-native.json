@@ -10,7 +10,8 @@
       "assemblyName": "BenchNativeCsharp",
       "namespace": "Bench.Native",
       "outputType": "Exe",
-      "targetFramework": "net10.0"
+      "targetFramework": "net10.0",
+      "publishAot": true
     }
   }]
 }

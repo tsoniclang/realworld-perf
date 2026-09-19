@@ -10,7 +10,8 @@
       "assemblyName": "BenchNodeCsharp",
       "namespace": "Bench.Node",
       "outputType": "Exe",
-      "targetFramework": "net10.0"
+      "targetFramework": "net10.0",
+      "publishAot": true
     }
   }]
 }

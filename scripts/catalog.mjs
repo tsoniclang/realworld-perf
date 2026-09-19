@@ -1,8 +1,8 @@
 export const lanes = Object.freeze([
   { id: "node", label: "Node.js", kind: "node" },
-  { id: "csharp-node", label: "C# Node APIs", kind: "csharp", assembly: "BenchNodeCsharp" },
+  { id: "csharp-node", label: "C# NativeAOT Node APIs", kind: "csharp", assembly: "BenchNodeCsharp" },
   { id: "rust-node", label: "Rust Node APIs", kind: "rust", crate: "bench_node_rust" },
-  { id: "csharp-native", label: "C# native APIs", kind: "csharp", assembly: "BenchNativeCsharp" },
+  { id: "csharp-native", label: "C# NativeAOT native APIs", kind: "csharp", assembly: "BenchNativeCsharp" },
   { id: "rust-native", label: "Rust native APIs", kind: "rust", crate: "bench_native_rust" },
 ].map(Object.freeze));
 

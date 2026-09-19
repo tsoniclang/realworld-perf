@@ -27,6 +27,13 @@ export function readOptions(args) {
   return options;
 }
 
+export function executionCommand(lane) {
+  if (lane.kind === "node") return { command: process.execPath, args: [resolve(root, "out/node/node/start.js")] };
+  if (lane.kind === "csharp") return { command: resolve(root, "out/native", lane.id, lane.assembly), args: [] };
+  if (lane.kind === "rust") return { command: resolve(root, "out/cargo/release", lane.crate), args: [] };
+  throw new Error(`Unknown execution lane: ${lane.id}`);
+}
+
 export function benchmark(options) {
   const build = verifyBuild();
   if (build.versions.node !== process.version || build.versions.rustc !== runCommand("rustc", ["--version"]).stdout.trim() ||
@@ -53,8 +60,7 @@ export function benchmark(options) {
         writeFileSync(resolve(cwd, "input.txt"), [input.benchmark, input.size, input.iterations, input.warmup].join("\n"));
         writeFileSync(resolve(cwd, "fixture.txt"), fixture.payload);
         try {
-          const command = lane.kind === "node" ? process.execPath : lane.kind === "csharp" ? "dotnet" : resolve(root, "out/cargo/release", lane.crate);
-          const args = lane.kind === "node" ? [resolve(root, "out/node/node/start.js")] : lane.kind === "csharp" ? [resolve(root, "out/bin", lane.id, `${lane.assembly}.dll`)] : [];
+          const { command, args } = executionCommand(lane);
           const child = runCommand(command, args, { cwd, timeout: 60000, log: resolve(cwd, "process.log") });
           if (child.stderr.trim() !== "") throw new Error(`Unexpected stderr: ${child.stderr}`);
           const result = JSON.parse(child.stdout.trim());

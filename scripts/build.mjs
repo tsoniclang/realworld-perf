@@ -5,6 +5,12 @@ import { lanes } from "./catalog.mjs";
 import { fileDigest, inputFingerprint, treeFiles } from "./artifacts.mjs";
 import { root, runCommand } from "./process.mjs";
 
+export function csharpPublishArguments(project, output) {
+  return ["publish", project, "--configuration", "Release", "--use-current-runtime",
+    "--self-contained", "true", "-p:IlcOptimizationPreference=Speed", "--nologo",
+    "--disable-build-servers", "-m:1", "--output", output];
+}
+
 export function buildAll() {
   mkdirSync(resolve(root, "out"), { recursive: true });
   const logRoot = resolve(root, ".temp/builds", `${Date.now()}-${process.pid}`);
@@ -37,8 +43,8 @@ export function buildAll() {
       let built;
       if (lane.kind === "csharp") {
         const project = resolve(root, "out", lane.id, "csharp", `${lane.assembly}.csproj`);
-        const output = resolve(root, "out/bin", lane.id);
-        built = runCommand("dotnet", ["build", project, "--configuration", "Release", "--nologo", "--disable-build-servers", "-m:1", "--output", output], { log: resolve(logRoot, `${lane.id}-build.log`) });
+        const output = resolve(root, "out/native", lane.id);
+        built = runCommand("dotnet", csharpPublishArguments(project, output), { log: resolve(logRoot, `${lane.id}-build.log`) });
         artifacts.push(...treeFiles(output));
       } else {
         const project = resolve(root, "out", lane.id, "rust/Cargo.toml");
@@ -60,6 +66,7 @@ export function buildAll() {
     createdAt: new Date().toISOString(),
     fingerprint,
     versions,
+    csharpCompilation: { mode: "NativeAOT", optimization: "Speed", runtime: "current" },
     timings,
     failures,
     artifacts: artifacts.map((path) => ({ path: relative(root, path), sha256: fileDigest(path) })),
