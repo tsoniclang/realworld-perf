@@ -3,12 +3,12 @@
 Run the same TypeScript workloads on plain Node.js and on Tsonic's C# and Rust
 targets. Each report includes Node timings, not just native-to-native ratios.
 
-**Status:** the five-lane suite is implemented, but its complete test gate does
-not pass yet. The published Rust compiler rejects the native filesystem adapter.
-The earlier managed-C# run passed four lanes; both C# lanes now require NativeAOT
-and are being reverified. C# also emits a nullable-local warning. Reports retain
-working-lane timings but explicitly mark a comparison incomplete if any lane fails. See
-[verification status](docs/verification.md) for the evidence and remaining work.
+**Status:** all five lanes pass with the packed Rust target fix, and both C#
+lanes run as NativeAOT executables. There are 50 passing correctness checks and
+125 passing full-size measurements. Published Rust target 0.1.1 still needs a
+release containing that fix before the ordinary public-package install passes.
+C# also emits an existing nullable-local warning. See
+[verification and timings](docs/verification.md) for the results and release boundary.
 
 ## The comparisons
 
@@ -34,7 +34,7 @@ compiled Node lane embeds Node/V8. These are native implementations of Node APIs
 | --- | --- | --- |
 | Prime summation | Trial-divide integers through 10,000 | Sum, checked against an independent sieve |
 | CSV aggregation | Split and sum 2,000 three-column records | Amount sum computed while generating the input |
-| File read | Read and UTF-8-decode a roughly 64 KiB text fixture | UTF-16 string length |
+| File read | Read and UTF-8-decode an 88 KiB text fixture | UTF-16 string length |
 | File write | Create/truncate and UTF-8-write the same fixture | Length and exact written bytes |
 | File metadata | Obtain fixture length from filesystem metadata | Exact UTF-8 byte length |
 
@@ -57,8 +57,10 @@ npm test
 npm run bench
 ```
 
-Only public npm packages are used. No sibling Tsonic checkout, global Tsonic or
-local package link is needed. The npm lockfile pins the installed compiler and
+The committed installation uses public npm packages. No sibling Tsonic checkout,
+global Tsonic or local package link is needed, but the release gap noted above
+still applies. Prepublication verification used an explicit packed target, as
+documented in the report. The npm lockfile pins the installed compiler and
 runtime packages. Native crate versions are recorded in the generated Cargo
 lockfiles and build artifact hashes; native toolchains are reported, not silently
 installed or changed. C# uses net10.0 in `tsonic.csharp-*.json`.
