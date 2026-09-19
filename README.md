@@ -30,6 +30,8 @@ prime divisors with neutral `int32` and narrow validated input dimensions before
 timing. Accumulated totals/checksums remain `number`: the admitted input range can
 exceed a signed 32-bit sum. The native driver mirrors the Node driver with these
 explicit selections, without changing warm-up, dispatch or result checks.
+Verification also runs the maximum prime input (one million) and checks that all
+five executables reject invalid dimensions before narrowing or entering loops.
 They still select the JavaScript source profile for strings, arrays and output;
 this is not a claim that every representation is native-optimal. Neither
 compiled Node lane embeds Node/V8. These are native implementations of Node APIs.
