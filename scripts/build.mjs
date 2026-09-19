@@ -20,6 +20,7 @@ export function buildAll() {
   const failures = [];
   const timings = [];
   const artifacts = [];
+  const fingerprint = inputFingerprint();
   for (const lane of lanes) {
     try {
       console.log(`Building ${lane.label}`);
@@ -50,21 +51,24 @@ export function buildAll() {
       }
       timings.push({ lane: lane.id, generationMs: generated.wallMs, nativeBuildMs: built.wallMs });
     } catch (error) {
-      failures.push(`${lane.id}: ${error.message}`);
-      console.error(failures.at(-1));
+      failures.push({ lane: lane.id, message: error.message });
+      console.error(`${lane.id}: ${error.message}`);
     }
   }
-  if (failures.length !== 0) throw new Error(`${failures.length} build lane(s) failed. Logs: ${logRoot}\n${failures.join("\n")}`);
+  if (inputFingerprint() !== fingerprint) throw new Error("Build inputs changed during compilation; no build record written.");
   const record = {
     createdAt: new Date().toISOString(),
-    fingerprint: inputFingerprint(),
+    fingerprint,
     versions,
     timings,
+    failures,
     artifacts: artifacts.map((path) => ({ path: relative(root, path), sha256: fileDigest(path) })),
   };
   writeFileSync(resolve(root, "out/build.json"), `${JSON.stringify(record, null, 2)}\n`);
-  console.log(`All ${lanes.length} lanes built. Logs: ${logRoot}`);
+  console.log(`${timings.length}/${lanes.length} lanes built; ${failures.length} failed. Logs: ${logRoot}`);
   return record;
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) buildAll();
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  if (buildAll().failures.length !== 0) process.exitCode = 1;
+}

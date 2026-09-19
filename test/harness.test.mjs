@@ -61,7 +61,7 @@ test("child failures and timeouts cannot become successful samples", () => {
 test("reports include Node and every lane without hiding build or startup costs", () => {
   const measurements = workloads.flatMap((workload) => lanes.map((lane, index) => ({ benchmark: workload.id, lane: lane.id, iterations: 1, elapsedMs: index + 1, processWallMs: 20 })));
   const report = formatReport({
-    createdAt: "test", samples: 1, warmup: 1, verification: true, measurements,
+    createdAt: "test", samples: 1, warmup: 1, verification: true, measurements, failures: [],
     machine: { platform: "linux", release: "test", arch: "x64", cpu: "test" },
     build: { versions: { node: "test", v8: "test", typescript: "test", dotnetSdk: "test", rustc: "test" }, fingerprint: "test", timings: lanes.map((lane) => ({ lane: lane.id, generationMs: 2, nativeBuildMs: 3 })) },
   });
@@ -69,4 +69,25 @@ test("reports include Node and every lane without hiding build or startup costs"
   assert.match(report, /not performance evidence/u);
   assert.match(report, /not a pure startup measurement/u);
   assert.match(report, /5\.00×/u);
+});
+
+test("incomplete reports keep failed lanes visible without inventing timings or ratios", () => {
+  const record = {
+    createdAt: "test", samples: 2, warmup: 1, verification: false,
+    measurements: workloads.flatMap((workload) => lanes.slice(1, 4).flatMap((lane) => [0, 1].map((round) => ({
+      benchmark: workload.id, lane: lane.id, round, iterations: 1, elapsedMs: 1, processWallMs: 10,
+    })))),
+    failures: [{ lane: "rust-native", message: "build rejected" }, { lane: "node", benchmark: "primes", round: 0, message: "execution rejected" }],
+    machine: { platform: "linux", release: "test", arch: "x64", cpu: "test" },
+    build: { versions: { node: "test", v8: "test", typescript: "test", dotnetSdk: "test", rustc: "test" }, fingerprint: "test", timings: lanes.slice(0, 4).map((lane) => ({ lane: lane.id, generationMs: 1, nativeBuildMs: 1 })) },
+  };
+  const report = formatReport(record);
+  for (const lane of lanes) assert.ok(report.includes(lane.label));
+  assert.match(report, /INCOMPLETE/u);
+  assert.match(report, /build rejected/u);
+  assert.match(report, /execution rejected/u);
+  assert.match(report, /FAILED — no certified timing/u);
+  assert.doesNotMatch(report, /×|NaN|Infinity/u);
+  record.measurements.pop();
+  assert.match(formatReport(record), /Read file metadata \| FAILED — no certified timing \| 1\.0000 \| 1\.0000 \| FAILED — no certified timing/u);
 });

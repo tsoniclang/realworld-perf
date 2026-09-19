@@ -38,15 +38,16 @@ export function benchmark(options) {
   const record = {
     createdAt: new Date().toISOString(), ...options,
     machine: { platform: platform(), release: release(), arch: arch(), cpu: cpus()[0]?.model ?? "unknown", logicalCpus: cpus().length, memoryBytes: totalmem() },
-    build, measurements: [], summary: [],
+    build, measurements: [], summary: [], failures: [...build.failures],
   };
-  const failures = [];
+  const blockedLanes = new Set(build.failures.map((failure) => failure.lane));
   for (const workload of workloads) {
     const fixture = createFixture(workload, options.verification);
     const input = { benchmark: workload.id, size: fixture.size, iterations: fixture.iterations, warmup: options.warmup };
     const payloadHash = createHash("sha256").update(fixture.payload).digest("hex");
     for (let round = 0; round < options.samples; round++) {
       for (const lane of laneOrder(round)) {
+        if (blockedLanes.has(lane.id)) continue;
         const cwd = resolve(workRoot, `${workload.id}-${round}-${lane.id}`);
         mkdirSync(cwd);
         writeFileSync(resolve(cwd, "input.txt"), [input.benchmark, input.size, input.iterations, input.warmup].join("\n"));
@@ -64,23 +65,24 @@ export function benchmark(options) {
           record.measurements.push({ ...result, lane: lane.id, round, processWallMs: child.wallMs, size: fixture.size, fixtureBytes: Buffer.byteLength(fixture.payload), fixtureSha256: payloadHash });
           console.log(`${workload.id} ${lane.id} ${round + 1}/${options.samples}: ${result.elapsedMs.toFixed(3)} ms; correct`);
         } catch (error) {
-          failures.push(`${workload.id}/${lane.id}/${round}: ${error.message}`);
-          console.error(failures.at(-1));
+          record.failures.push({ benchmark: workload.id, lane: lane.id, round, message: error.message });
+          console.error(`${workload.id}/${lane.id}/${round}: ${error.message}`);
         }
       }
     }
   }
-  if (failures.length !== 0) throw new Error(`${failures.length} benchmark invocation(s) failed. No performance report published. Evidence: ${workRoot}\n${failures.join("\n")}`);
   for (const workload of workloads) {
     for (const lane of laneOrder(0)) {
-      record.summary.push({ benchmark: workload.id, lane: lane.id, ...statistics(record.measurements.filter((sample) => sample.benchmark === workload.id && sample.lane === lane.id).map((sample) => sample.elapsedMs / sample.iterations)) });
+      const values = record.measurements.filter((sample) => sample.benchmark === workload.id && sample.lane === lane.id).map((sample) => sample.elapsedMs / sample.iterations);
+      if (values.length === options.samples) record.summary.push({ benchmark: workload.id, lane: lane.id, ...statistics(values) });
     }
   }
   mkdirSync(resolve(root, "results"), { recursive: true });
   const output = resolve(root, "results", `${record.createdAt.replaceAll(":", "-")}-${options.verification ? "verify" : "bench"}`);
   writeFileSync(`${output}.json`, `${JSON.stringify(record, null, 2)}\n`, { flag: "wx" });
   writeFileSync(`${output}.md`, formatReport(record), { flag: "wx" });
-  console.log(`Passed ${record.measurements.length} invocations. Report: ${output}.md`);
+  console.log(`${record.measurements.length} correct invocations; ${record.failures.length} build/execution failures. Report: ${output}.md`);
+  if (record.failures.length !== 0) throw new Error(`Incomplete comparison: ${record.failures.length} build/execution failures. See ${output}.md and ${workRoot}.`);
   return record;
 }
 

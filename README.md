@@ -6,7 +6,8 @@ targets. Each report includes Node timings, not just native-to-native ratios.
 **Status:** the five-lane suite is implemented, but its complete test gate does
 not pass yet. The published Rust compiler rejects the native filesystem adapter.
 Four lanes build and pass their workload checks; C# also emits a nullable-local
-warning. No complete performance comparison has been published. See
+warning. Reports retain the working-lane timings but explicitly mark a comparison
+incomplete if any lane fails. See
 [verification status](docs/verification.md) for the evidence and remaining work.
 
 ## The comparisons
@@ -71,7 +72,9 @@ npm run bench -- --samples 10 --warmup 3
 
 Each round rotates lane order. Each process receives identical inputs and
 iteration counts for that workload. Every timed invocation must pass its
-checksum; a failed lane prevents publishing a successful comparison report.
+checksum. A failed lane remains visible in the report without a timing or ratio;
+the command still exits unsuccessfully. Working-lane measurements are retained,
+not represented as complete certification of the five-lane comparison.
 
 ## Read the results
 

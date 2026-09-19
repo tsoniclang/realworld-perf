@@ -1,26 +1,37 @@
 # Verification status
 
-Recorded September 18, 2026. This is a checkpoint, not a passing certification.
+Updated September 19, 2026. This is a checkpoint, not a passing certification.
 
 ## Results
 
 | Gate | Result |
 | --- | --- |
 | Fresh locked public-package install | Pass: 18 packages, empty install root and npm cache, no sibling source links |
-| Harness tests | 7/7 pass; no skips |
+| Harness tests | 8/8 pass; no skips |
 | Node build | Pass |
 | C# Node and native builds | Pass, with the nullable-local warning described below |
 | Rust Node build | Pass |
 | Rust native build | Fails during target analysis |
-| Runtime checks of the four built lanes | 20/20 workload cells pass |
+| Runtime checks of the four built lanes | 40/40 invocations pass: 20 workload cells, two rounds |
 | Complete `npm test` | Fails; the five-lane execution matrix has not passed |
-| Full benchmark measurements | Not run; no successful comparison report |
+| Full-size benchmark measurements | 100/100 working-lane invocations pass; native Rust remains failed, and `npm run bench` returns nonzero |
 
-The 20 runtime checks used three iterations and one warm-up batch per workload.
+The 40 runtime checks used three iterations and one warm-up batch per workload.
 They checked checksums, Unicode string lengths, UTF-8 metadata byte counts and
-exact bytes after writes. They are diagnostic evidence, not a substitute for
-the normal two-round, 25-cell gate. The complete gate still requires all five
+exact bytes after writes. They are evidence for the four working lanes, not a
+substitute for the complete two-round, 25-cell gate. That gate requires all five
 lanes and does not omit the native Rust failures.
+
+The full-sized run used five samples per working cell and two warm-up batches
+per process. All checksums and file-write byte checks passed. The saved report
+contains Node, both C# variants and Rust's Node-API timings, plus an explicitly
+failed native Rust column. The report is incomplete, not a successful five-lane
+certification. Both test and measurement commands return nonzero for that build
+failure; neither loses the measurements of unrelated successful lanes.
+
+The workloads and source adapters did not change for this run. The new report
+test covers missing sample rounds, missing Node baseline, failed builds and
+failed execution; these must not produce a fabricated timing or speed ratio.
 
 ## Native Rust blocker
 
@@ -94,7 +105,14 @@ Local evidence is ignored rather than committed:
 - `.temp/verification/native-probe.log`: isolated native filesystem rejection.
 - `.temp/verification/built-lane-diagnostic-2.log`: 20 diagnostic runtime checks.
 - `.temp/verification/fresh-npm-ci.log`: fresh public install.
+- `.temp/verification/full-20260919.log`: current complete test attempt,
+  including 8 harness tests and 40 correctness executions.
+- `.temp/builds/1789829556694-22481/`: current five-lane build attempt.
+- `.temp/verification/performance-20260919.log`: all 100 full-sized measurements.
+- `results/2026-09-19T14-53-27.870Z-bench.md` and its adjacent JSON file:
+  medians, ranges, raw samples, checksums, fixture hashes, build timings and failures.
 
 After the compiler defects are fixed and published, update exact package pins
-and the lockfile, run `npm test`, then `npm run bench`. Inspect the emitted source
-and recorded timing spread before drawing performance conclusions.
+and the lockfile, run `npm test`, then `npm run bench` to obtain a complete
+five-lane result. These measurements describe one machine and finite warm-up;
+they do not establish universal performance or a compiler regression cause.
