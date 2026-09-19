@@ -1,0 +1,17 @@
+{
+  "rootDir": "src",
+  "entryPoint": "node/start.ts",
+  "outDir": "out/csharp-node",
+  "cacheDir": ".temp/compiler-cache",
+  "targets": [{
+    "id": "csharp",
+    "surfaces": ["js"],
+    "options": {
+      "assemblyName": "BenchNodeCsharp",
+      "namespace": "Bench.Node",
+      "outputType": "Exe",
+      "targetFramework": "net10.0",
+      "publishAot": true
+    }
+  }]
+}

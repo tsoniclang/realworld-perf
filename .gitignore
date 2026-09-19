@@ -1,4 +1,8 @@
 # Logs
+/.analysis/
+/results/
+/.tsonic/
+*.binlog
 logs
 *.log
 npm-debug.log*
