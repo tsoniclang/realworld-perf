@@ -18,7 +18,12 @@ test("workload selection precedes both warmup and measured iteration", () => {
     const stat = source.slice(source.indexOf('if (benchmark === "file-stat")'), source.indexOf('throw new Error("Unknown benchmark")'));
     assert.doesNotMatch(stat, /payload|readText|writeText/u);
     assert.match(stat, /for \(let index/u);
-    assert.match(stat, /fileSize\("fixture.txt"\)/u);
+    assert.match(stat, /createStat\("fixture.txt"\)/u);
+    assert.match(stat, /checksum \+= stat\(\)/u);
+    const write = source.slice(source.indexOf('if (benchmark === "file-write")'), source.indexOf('if (benchmark === "file-stat")'));
+    assert.ok(write.indexOf('createWriter("output.txt", payload)') < write.indexOf("return (iterations"));
+    assert.doesNotMatch(write.slice(write.indexOf("return (iterations")), /payload|createWriter|output\.txt/u);
+    assert.match(write, /write\(\);/u);
   }
 });
 

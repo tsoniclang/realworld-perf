@@ -4,9 +4,9 @@ function selectWorkload(
   benchmark: string,
   size: number,
   payload: string,
-  readText: (path: string) => string,
-  writeText: (path: string, contents: string) => void,
-  fileSize: (path: string) => number,
+  createReader: (path: string) => () => string,
+  createWriter: (path: string, contents: string) => () => void,
+  createStat: (path: string) => () => number,
 ): (iterations: number) => number {
   if (benchmark === "primes") {
     return (iterations: number): number => {
@@ -23,26 +23,30 @@ function selectWorkload(
     };
   }
   if (benchmark === "file-read") {
+    const read = createReader("fixture.txt");
     return (iterations: number): number => {
       let checksum = 0;
-      for (let index = 0; index < iterations; index++) checksum += readText("fixture.txt").length;
+      for (let index = 0; index < iterations; index++) checksum += read().length;
       return checksum;
     };
   }
   if (benchmark === "file-write") {
+    const write = createWriter("output.txt", payload);
+    const length = payload.length;
     return (iterations: number): number => {
       let checksum = 0;
       for (let index = 0; index < iterations; index++) {
-        writeText("output.txt", payload);
-        checksum += payload.length;
+        write();
+        checksum += length;
       }
       return checksum;
     };
   }
   if (benchmark === "file-stat") {
+    const stat = createStat("fixture.txt");
     return (iterations: number): number => {
       let checksum = 0;
-      for (let index = 0; index < iterations; index++) checksum += fileSize("fixture.txt");
+      for (let index = 0; index < iterations; index++) checksum += stat();
       return checksum;
     };
   }
@@ -52,8 +56,9 @@ function selectWorkload(
 export function run(
   now: () => number,
   readText: (path: string) => string,
-  writeText: (path: string, contents: string) => void,
-  fileSize: (path: string) => number,
+  createReader: (path: string) => () => string,
+  createWriter: (path: string, contents: string) => () => void,
+  createStat: (path: string) => () => number,
 ): void {
   const fields = readText("input.txt").split("\n");
   if (fields.length !== 4) throw new Error("Expected four benchmark input fields");
@@ -73,7 +78,7 @@ export function run(
     throw new Error("Invalid benchmark dimensions");
   }
   const payload = readText("fixture.txt");
-  const performBatch = selectWorkload(input.benchmark, input.size, payload, readText, writeText, fileSize);
+  const performBatch = selectWorkload(input.benchmark, input.size, payload, createReader, createWriter, createStat);
   let warmupChecksum = 0;
   for (let batch = 0; batch < input.warmup; batch++) {
     warmupChecksum += performBatch(input.iterations);

@@ -1,6 +1,6 @@
 import { run } from "../native/runner.js";
-import { fileSize, now, readText, writeText } from "./platform.js";
+import { createReader, createStat, createWriter, now, readText } from "./platform.js";
 
 export function main(): void {
-  run(now, readText, writeText, fileSize);
+  run(now, readText, createReader, createWriter, createStat);
 }
