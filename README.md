@@ -41,12 +41,14 @@ compiled Node lane embeds Node/V8. These are native implementations of Node APIs
 | --- | --- | --- |
 | Prime summation | Trial-divide integers through 10,000 | Sum, checked against an independent sieve |
 | CSV aggregation | Split and sum 2,000 three-column records | Amount sum computed while generating the input |
-| File read | Read and UTF-8-decode an 88 KiB text fixture | UTF-16 string length |
-| File write | Create/truncate and UTF-8-write the same fixture | Length and exact written bytes |
+| File read | Read and UTF-8-decode an 88 KiB text fixture | Native string length: UTF-8 bytes in Rust, UTF-16 units in C# and Node |
+| File write | Create/truncate and UTF-8-write the same fixture | Native string length and exact written bytes |
 | File metadata | Obtain fixture length from filesystem metadata | Exact UTF-8 byte length |
 
-Fixtures contain accented text and emoji so byte counts cannot accidentally be
-substituted for string lengths. The filesystem examples use a warm OS cache.
+Fixtures contain accented text and emoji. The harness checks the exact declared
+unit for each lane and rejects the other unit's count. The authored workload is
+unchanged; Rust does not convert native strings to UTF-16 for this benchmark.
+All lanes read and write identical bytes. The filesystem examples use a warm OS cache.
 Writes are buffered, without fsync; they do not measure durable storage latency.
 
 ## Install

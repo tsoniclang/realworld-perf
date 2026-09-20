@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { createFixture, laneOrder, lanes, workloads } from "../scripts/catalog.mjs";
+import { createFixture, expectedChecksum, laneOrder, lanes, workloads } from "../scripts/catalog.mjs";
 import { readOptions, executionCommand } from "../scripts/benchmark.mjs";
 import { csharpPublishArguments } from "../scripts/build.mjs";
 import { formatReport, statistics, validateResult } from "../scripts/results.mjs";
@@ -93,6 +93,26 @@ test("sample statistics do not mutate inputs and reject unusable clocks", () => 
   assert.deepEqual(values, [9, 1, 5, 3]);
   assert.equal(statistics([5, 1, 3]).median, 3);
   for (const invalid of [[], [0], [-1], [NaN], [Infinity]]) assert.throws(() => statistics(invalid));
+});
+
+test("native string units have exact checksums without changing workloads or admitting the other unit", () => {
+  for (const workload of workloads) {
+    const fixture = createFixture(workload, true);
+    for (const lane of lanes) {
+      const lengthResult = workload.id === "file-read" || workload.id === "file-write";
+      const expected = expectedChecksum(workload, fixture, lane);
+      assert.equal(expected, lengthResult && lane.kind === "rust" ? Buffer.byteLength(fixture.payload) : fixture.expected);
+      const input = { benchmark: workload.id, iterations: 3, warmup: 2 };
+      const result = { benchmark: workload.id, iterations: 3, checksum: expected * 3, warmupChecksum: expected * 6, elapsedMs: 1 };
+      assert.doesNotThrow(() => validateResult(result, input, expected));
+      if (lengthResult) {
+        const otherUnit = lane.kind === "rust" ? fixture.payload.length : Buffer.byteLength(fixture.payload);
+        assert.notEqual(expected, otherUnit);
+        assert.throws(() => validateResult({ ...result, checksum: otherUnit * 3 }, input, expected));
+      }
+    }
+  }
+  assert.throws(() => expectedChecksum(workloads[2], createFixture(workloads[2], true), { stringUnit: "unknown" }), /Unknown string unit/u);
 });
 
 test("argument validation rejects missing, conflicting and unbounded inputs", () => {
