@@ -6,6 +6,8 @@ import { readOptions, executionCommand } from "../scripts/benchmark.mjs";
 import { csharpPublishArguments } from "../scripts/build.mjs";
 import { formatReport, statistics, validateResult } from "../scripts/results.mjs";
 import { runCommand } from "../scripts/process.mjs";
+import { stripTypeScriptTypes } from "node:module";
+import { createScanner } from "typescript/unstable/ast/scanner";
 
 test("five workloads cover all five lanes with a real Node baseline", () => {
   assert.equal(workloads.length, 5);
@@ -15,6 +17,39 @@ test("five workloads cover all five lanes with a real Node baseline", () => {
     assert.equal(laneOrder(round)[0].id, lanes[round].id);
     assert.deepEqual(laneOrder(round).map((lane) => lane.id).sort(), lanes.map((lane) => lane.id).sort());
   }
+});
+
+test("native annotations preserve exactly the same workload algorithms after type erasure", () => {
+  const source = directory => readFileSync(new URL(`../src/${directory}/workloads.ts`, import.meta.url), "utf8");
+  const erase = text => {
+    const scanner = createScanner(true, undefined, stripTypeScriptTypes(text));
+    const tokens = [];
+    for (;;) {
+      const kind = scanner.scan();
+      const spelling = scanner.getTokenText();
+      if (spelling.length === 0) break;
+      tokens.push([kind, spelling, tokens.length > 0 && scanner.hasPrecedingLineBreak()]);
+    }
+    return tokens;
+  };
+  assert.deepEqual(erase(source("native")), erase(source("shared")));
+  assert.match(source("native"), /candidate: int32/u);
+  assert.match(source("native"), /divisor: int32/u);
+  assert.match(source("native"), /index: int32/u);
+  assert.doesNotMatch(source("shared"), /@tsonic|int32/u);
+  for (const target of ["csharp", "rust"]) {
+    assert.match(readFileSync(new URL(`../src/${target}/main.ts`, import.meta.url), "utf8"), /\.\.\/native\/runner\.js/u);
+  }
+  assert.match(readFileSync(new URL("../src/node/main.ts", import.meta.url), "utf8"), /\.\.\/shared\/runner\.js/u);
+});
+
+test("native numeric selection follows validation and does not narrow accumulated totals", () => {
+  const runner = readFileSync(new URL("../src/native/runner.ts", import.meta.url), "utf8");
+  assert.ok(runner.indexOf('throw new Error("Invalid benchmark dimensions")') < runner.indexOf("input.size as int32"));
+  assert.match(runner, /let checksum = 0/u);
+  assert.match(runner, /let warmupChecksum = 0/u);
+  const source = readFileSync(new URL("../src/native/workloads.ts", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /total: int32/u);
 });
 
 test("both C# lanes publish and execute NativeAOT rather than managed DLLs", () => {

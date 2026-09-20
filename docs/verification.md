@@ -1,127 +1,191 @@
 # Verification
 
-September 19, 2026. All five lanes build and execute correctly with the packed
-Rust target fix. Both C# lanes are NativeAOT, not managed DLLs.
+September 20, 2026. All five packed-candidate lanes build and execute correctly.
+Both C# lanes are NativeAOT, not managed DLLs. Compiler, runtime, provider,
+Pudding and Tsumo regression gates pass for both targets.
 
-**Release boundary:** published `@tsonic/target-rust@0.1.1` does not contain the
-fix. The committed public-package installation still needs a new Rust target
-release and an updated exact pin/lockfile. The results below are prepublication
-verification, not a claim that the existing public package works.
+**Release boundary:** these results use exact candidate npm tarballs. The
+committed public 0.1.1 pins do not contain these changes; the published Rust
+target also lacks the earlier native-import fix. A release and subsequent
+public-pin update remain necessary. No npm publication is included here.
 
-## Verified code and packages
+## Two separate changes
 
-- Benchmark implementation: `1afdf46`; later report edits change documentation only.
-- Rust target: `b201a4e`, based on `3beb6db`.
-- All other first-party compiler/runtime dependencies: public npm 0.1.1.
-- A fresh benchmark archive installs the fixed target through an explicit npm
-  tarball dependency. No package internals, generated source or benchmark
-  workload is patched. There are no workspace links.
-- The authored `src/` tree is byte-identical to the earlier benchmark at
-  `4436185`. Node-compatible lanes still use the same source directory.
+Ordinary TypeScript keeps its `number` contract. The compiler can select integer
+remainder only when it proves both operands are non-negative signed-32-bit
+integers and the divisor is positive. Unknown bounds, fractions, negative zero,
+NaN, overflow and uncertain mutation retain floating-point arithmetic.
 
-Candidate tarball SHA-256:
-
-```text
-a8034199100aa5f37b80e4d3600875da515c46e09d405bf989ddf0e1fb7fd77c
+```ts
+function residues(): number {
+  let total = 0;
+  for (let value = 0; value < 100; value++) total += value % 7;
+  return total;
+}
 ```
+
+Here only the remainder changes representation. The public result and loop
+variable remain `number`. The targets emit an integer remainder and convert its
+exact result back to `double`/`f64`; they do not add a speculative fast path.
+
+The native benchmark lanes instead explicitly annotate counters and divisors
+with `int32`. Input dimensions are validated before narrowing. Accumulated sums
+and checksums stay `number`: primes through one million sum to 37,550,402,023,
+which does not fit int32. The algorithms are unchanged after type erasure.
+
+Node and both Node-compatible lanes retain the same unmodified authored source.
+Their prime function accepts an unknown `number` parameter; this implementation
+does not infer its bounds from another function's validation. Its remainder
+therefore remains floating-point. Native source annotations and automatic
+proof-based selection are not interchangeable claims.
+
+## Verified revisions and packages
+
+| Repository | Tested revision |
+| --- | --- |
+| Tsonic shared target API | `9efc705a` |
+| C# target | `bb0c93ba` |
+| Rust target | `cbbf793` |
+| Benchmark implementation | `c586979` |
+
+Subsequent report edits change documentation only. A clean benchmark archive
+installs these three compiler packages through explicit tarball dependencies;
+all other first-party dependencies remain public npm 0.1.1. There are no workspace
+links, edited package internals or hand-patched generated programs. The installed
+graph has one shared target API and TSTS implementation.
+
+| Candidate package | SHA-256 |
+| --- | --- |
+| `@tsonic/target-api` | `6d7fb59eb97892b4a89b2d8f10ebed98667279224763b3941fa5326948fe62bf` |
+| `@tsonic/target-csharp` | `6e566a171d1954567508fbcbda99509046591194d9e85bb083160aac05438992` |
+| `@tsonic/target-rust` | `7143bd1d00cddc19afb6827269ab7c8046f408adaae21454c008dbb3eafa5f51` |
 
 ## Correctness gates
 
 | Gate | Result |
 | --- | --- |
-| Benchmark harness | 9/9 pass |
-| Build matrix | 5/5 pass, including both C# NativeAOT executables |
-| Small-input correctness matrix | 50/50 pass: all 25 cells, two rounds |
-| Full-size measurements | 125/125 pass: all 25 cells, five rounds |
-| Complete Rust target suite | 1,361/1,361 pass; no skips or TODOs |
-| Rust Pudding | 31/31 projects; 51/51 total tasks pass |
-| Tsumo-Rust | Complete gate passes: deterministic double generation, native tests, 74 compiled tests, 28 application/architecture tests, Clippy, release/debug output equivalence and lockfile immutability |
+| Shared integer range/domain tests | 6/6; includes 28 unsafe source bodies and atomic proof-budget exhaustion |
+| Matching C#/Rust native proofs | 37 source cases and 44 Node-derived checks per target, plus explicit typed-zero checks |
+| Benchmark harness | 11/11 |
+| Packed build matrix | 5/5, including both C# NativeAOT executables |
+| Small-input correctness matrix | 50/50: all 25 cells, two rounds |
+| Executable numeric boundaries | 35/35: maximum prime input and six invalid dimension cases in each lane |
+| Full-size measurements | 125/125: all 25 cells, five rounds |
+| Full host/C#/runtime/provider suite | 308/308 tasks, 4,820/4,820 tests |
+| Full Rust target | 1,362/1,362 tests |
+| Rust core / JS / Node | 122 / 286 / 180 native checks plus 38 Node-provider checks pass |
+| C# Pudding | 25 projects / 48 tasks pass |
+| Rust Pudding | 31 projects / 51 tasks pass |
+| Tsumo C# | Three builds, 71 compiled tests, 25 application/architecture tests, NativeAOT smoke and output equivalence pass |
+| Tsumo Rust | Deterministic double generation, Cargo tests, 74 compiled tests, 28 application/architecture tests, Clippy, release/debug equivalence and lockfile immutability pass |
 
-Both C# publish logs contain `Generating native code`; both outputs are native
-ELF executables. The harness executes those files directly. NativeAOT uses
-Release, the current runtime identifier and `IlcOptimizationPreference=Speed`.
-No JIT mode or fallback build exists in this harness.
+Rust JS retains one existing ignored upstream doctest for a nightly-only
+`pattern` feature. No new skip or weakened assertion was introduced. TSTS itself
+was not changed; this is not a new standalone TSTS certification claim.
 
-The first Rust full-suite run exposed a discarded-conversion warning in a newly
-added regression. The compiler fix preserves evaluation with `let _ = ...`;
-no warning suppression was added. The entire final suite was rerun and passed.
+The first C# Tsumo application run could not locate .NET because the shell lacked
+`DOTNET_ROOT`. The complete gate passed after pointing it at the already-installed
+runtime. No SDK upgrade, global setup change or application workaround was made.
+
+Native safety proofs also exposed an existing C# `-0` literal bug. The fix emits
+signed floating zero in its selected type, while an explicitly integer zero stays
+integer. It does not cast ordinary negations or change their contextual types.
 
 ## Full-size timings
 
 Median microseconds per workload iteration; lower is better. Five samples per
-cell, two warm-up batches per process. All compilation and verification jobs
-finished before measurement; the pre-run observation showed 98–99% CPU idle.
+cell, two warm-up batches per process. Compilation and certification finished
+before measurement; the preceding samples showed 99% CPU idle.
 
 | Workload | Node.js | C# AOT, Node APIs | Rust, Node APIs | C# AOT, native APIs | Rust, native APIs |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Primes through 10,000 | 160.907 | 472.773 | 1,215.100 | 469.666 | 1,232.986 |
-| CSV, 2,000 rows | 342.957 | 330.248 | 442.111 | 329.473 | 457.282 |
-| Read UTF-8 file | 64.192 | 142.607 | 109.931 | 145.107 | 104.592 |
-| Write UTF-8 file | 112.234 | 150.081 | 140.901 | 147.510 | 127.646 |
-| File metadata | 1.394 | 7.218 | 2.325 | 3.209 | 2.372 |
+| Primes through 10,000 | 160.225 | 467.573 | 1,234.424 | 166.072 | 160.931 |
+| CSV, 2,000 rows | 344.821 | 326.974 | 463.551 | 294.235 | 445.923 |
+| Read UTF-8 file | 62.975 | 140.124 | 106.180 | 142.612 | 124.973 |
+| Write UTF-8 file | 107.734 | 146.343 | 124.885 | 147.751 | 127.587 |
+| File metadata | 1.385 | 7.169 | 2.336 | 3.229 | 2.323 |
 
-The text fixture contains 65,536 UTF-16 code units and 90,112 UTF-8 bytes
-(88 KiB). Reads include decoding and the source string-length result. Writes
-are buffered without fsync. Write samples are noisy: Node spans 102–388 µs,
-Rust Node 122–406 µs and Rust native 120–292 µs. Do not interpret the write
-medians as stable storage-throughput rankings.
+The native prime lanes are now close to Node, rather than approximately 3× and
+8× slower. The generated C# and Rust use `int`/`i32` counters and integer remainder;
+the totals remain `double`/`f64`. This does not mean all native-lane operations
+are optimal: strings, arrays, callbacks and output still use the selected source
+profile. This change does not optimize those runtimes or I/O.
 
-NativeAOT slightly beats Node on this CSV workload, but does not win every row.
-These are generated programs with the same TypeScript algorithms, not handwritten
-native benchmarks. The emitted prime loops use `double`/`f64`; CSV retains
-JS array/string operations. Those are observed representation choices, not a
-profiler-proven explanation of every timing difference. This work fixes
-compilation and measurement, not every possible runtime optimization.
+The file fixture contains 65,536 UTF-16 code units and 90,112 UTF-8 bytes. Reads
+include decoding and the source string-length result. Writes are buffered without
+fsync. These are not raw storage-throughput measurements.
 
-## Rust fixes
+### Automatic-selection measurement
 
-The unchanged native adapter now compiles:
+A separate ignored project compares the same prime algorithm using either an
+unknown parameter bound or a local constant bound. Both use ordinary `number`,
+the same callback shape and checked sums; no integer annotations are used.
+Five rounds each run 1,000 iterations after warm-up, alternating order.
 
-```ts
-read_to_string<string>(path).unwrap();
-write<string, string>(path, contents).unwrap();
-Number(metadata<string>(path).unwrap().len());
-```
+| Target | Unknown bound, floating remainder | Proven bound, integer remainder |
+| --- | ---: | ---: |
+| C# NativeAOT | 462.305 µs | 204.784 µs |
+| Rust release | 1,196 µs | 186 µs |
 
-The target recognizes the exact native String/str `AsRef` contracts instead of
-rejecting valid generic calls. Explicit numeric conversion uses a native cast:
-the final expression emits `.len() as f64`, without BigInt allocation or a
-conversion helper. Tests cover inferred/explicit generics, UTF-8, errors, reused
-values, all scalar numeric widths, rounding, side effects and invalid contracts.
+All checksums pass. Generated source retains floating declarations and public
+results. Native disassembly confirms floating remainder in the control and
+integer division/remainder in the proven variant. The measured improvement is
+about 2.26× and 6.43× for these programs, not a universal speedup promise.
 
-## Remaining C# warning
+### Performance qualification
 
-Public C# target 0.1.1 emits CS8600 for a nullable `JSON.stringify` result
-assigned to a non-nullable generated local. The authored code checks for
-`undefined` before printing. Both NativeAOT programs execute correctly, but the
-builds are not warning-free. No warning suppression or source workaround was
-added. This separate C# issue is not part of the Rust fix.
+The default Rust native file-read row regresses relative to the previous build.
+A same-CPU alternating comparison, using identical input and six samples per
+binary, measures 104.0–108.5 µs before and 124.6–125.9 µs now.
+
+The generated I/O adapter, runtime source and dependency graph are unchanged.
+The UTF-16 length routine has identical instructions but a different address.
+An isolated rebuild changing only LLVM function alignment returns the new binary
+to 103.7–107.3 µs. This demonstrates code-placement sensitivity; it
+does not prove which individual instruction or cache effect causes the difference.
+The alignment experiment is not the default build and is not substituted into
+the table. No alignment flags, padding tricks or runtime changes are shipped.
+
+Consequently, correctness certification passes, but this report does **not** claim
+that every workload is performance-neutral or faster. Resolving the remaining
+string/I/O cost needs separately scoped profiling, not a hidden benchmark change.
+
+## Existing C# warning
+
+Both benchmark C# builds still emit CS8600 for a nullable `JSON.stringify`
+result assigned to a non-nullable generated local. The authored code checks
+`undefined` before printing. This predates the numeric changes; it is neither
+suppressed nor presented as warning-free certification.
 
 ## Environment and evidence
 
-AMD Ryzen 9 5900X, Linux x64; Node 26.8.1 / V8 14.6.202.34; TypeScript 7.0.2;
-.NET SDK 11.0.100-rc.1.26425.128 targeting net10.0; Rust/Cargo 1.98.1.
+AMD Ryzen 9 5900X, Linux x64; Node 26.8.1 / V8 14.6.202.34-node.28;
+TypeScript 7.0.2; installed .NET SDK 11.0.100-rc.1.26425.128 targeting net10.0;
+Rust/Cargo 1.98.1. The compiler/downstream repositories separately use their
+committed SDK 10.0.400 selection. No installed toolchain was upgraded.
 
-The benchmark guard is 12 GiB, no swap, 1,024 tasks and one hour. Rust target
-verification used three workers, a final 16 GiB guard and no swap. Pudding and
-Tsumo used their bounded verification paths. No OOM was recorded.
+The benchmark guard is 12 GiB, no swap, 1,024 tasks and one hour. Compiler
+certification used at most 16 GiB and no swap; Rust target's sampled group peak
+was 14.0 GiB. No OOM or new memory-ceiling event was recorded.
 
-Local logs and raw reports are ignored, not committed:
+Local evidence is ignored, not committed:
 
-- `.temp/candidate-20260919/candidate-final-test.log`
-- `.temp/candidate-20260919/candidate-final-bench.log`
-- `.temp/candidate-20260919/idle-before-benchmark.log`
-- `.temp/candidate-20260919/workspace/results/2026-09-19T16-14-31.153Z-verify.json`
-- `.temp/candidate-20260919/workspace/results/2026-09-19T16-46-03.134Z-bench.json`
-  and its adjacent Markdown report.
+- `.temp/candidate-20260920/candidate-final-test.log`
+- `.temp/candidate-20260920/candidate-final-bench.log`
+- `.temp/candidate-20260920/workspace/results/2026-09-19T22-09-59.030Z-verify.json`
+- `.temp/candidate-20260920/workspace/results/2026-09-19T22-12-25.875Z-bench.json`
+- `.temp/candidate-20260920/automatic-proof-{csharp,rust}.log`
+- `.temp/candidate-20260920/read-comparison.json`
+- `.temp/candidate-20260920/read-alignment-comparison.json`
+- `../tsonic/.analysis/proven-integer-benchmarks-20260920/certification.md`
 
-The raw JSON retains every sample, range, checksum, fixture hash, tool version,
-artifact hash and build timing. Its input fingerprint is
-`c1fd29b87be33ae9b8bf0fb3cf9231360ecf94d8604eb730619be95842a2fa30`.
-Build timings were collected during verification and are not uncontended compiler
-benchmarks. Process wall time includes setup, warm-up and shutdown, not just
-startup.
+The raw reports retain samples, ranges, checked results, fixture hashes, tool
+versions, artifact hashes and build timings. Input fingerprint:
+`3d0f3d5fab14d32400d051f9e13a4f6c19ac1e1a98038f37ce76232fb3dea857`.
+The full-size JSON SHA-256 is
+`18a48817d4eaef4f3576b270cda46c17ddb96d57a495ff28f88a721f0bdbb1d7`.
 
-Next: merge and publish the Rust target fix, update the benchmark's public pin
-and lockfile, then repeat `npm ci`, `npm test` and `npm run bench` with only
-registry packages. No npm publication is included in these PRs.
+Next release steps: merge the compiler and benchmark changes, publish affected
+packages through the normal release gate, update exact benchmark pins and the
+lockfile, then repeat a fresh public-registry install and verification. Publication
+and unrelated performance fixes are not part of this batch.
