@@ -1,22 +1,52 @@
 import type { int32 } from "@tsonic/core/types.js";
 import { sumCsvAmounts, sumPrimes } from "./workloads.js";
 
-function perform(
+function selectWorkload(
   benchmark: string,
   size: int32,
   payload: string,
   readText: (path: string) => string,
   writeText: (path: string, contents: string) => void,
   fileSize: (path: string) => number,
-): number {
-  if (benchmark === "primes") return sumPrimes(size);
-  if (benchmark === "csv") return sumCsvAmounts(payload);
-  if (benchmark === "file-read") return readText("fixture.txt").length;
-  if (benchmark === "file-write") {
-    writeText("output.txt", payload);
-    return payload.length;
+): (iterations: int32) => number {
+  if (benchmark === "primes") {
+    return (iterations: int32): number => {
+      let checksum = 0;
+      for (let index: int32 = 0; index < iterations; index++) checksum += sumPrimes(size);
+      return checksum;
+    };
   }
-  if (benchmark === "file-stat") return fileSize("fixture.txt");
+  if (benchmark === "csv") {
+    return (iterations: int32): number => {
+      let checksum = 0;
+      for (let index: int32 = 0; index < iterations; index++) checksum += sumCsvAmounts(payload);
+      return checksum;
+    };
+  }
+  if (benchmark === "file-read") {
+    return (iterations: int32): number => {
+      let checksum = 0;
+      for (let index: int32 = 0; index < iterations; index++) checksum += readText("fixture.txt").length;
+      return checksum;
+    };
+  }
+  if (benchmark === "file-write") {
+    return (iterations: int32): number => {
+      let checksum = 0;
+      for (let index: int32 = 0; index < iterations; index++) {
+        writeText("output.txt", payload);
+        checksum += payload.length;
+      }
+      return checksum;
+    };
+  }
+  if (benchmark === "file-stat") {
+    return (iterations: int32): number => {
+      let checksum = 0;
+      for (let index: int32 = 0; index < iterations; index++) checksum += fileSize("fixture.txt");
+      return checksum;
+    };
+  }
   throw new Error("Unknown benchmark");
 }
 
@@ -47,17 +77,13 @@ export function run(
   const iterations = input.iterations as int32;
   const warmup = input.warmup as int32;
   const payload = readText("fixture.txt");
+  const performBatch = selectWorkload(input.benchmark, size, payload, readText, writeText, fileSize);
   let warmupChecksum = 0;
   for (let batch: int32 = 0; batch < warmup; batch++) {
-    for (let index: int32 = 0; index < iterations; index++) {
-      warmupChecksum += perform(input.benchmark, size, payload, readText, writeText, fileSize);
-    }
+    warmupChecksum += performBatch(iterations);
   }
-  let checksum = 0;
   const started = now();
-  for (let index: int32 = 0; index < iterations; index++) {
-    checksum += perform(input.benchmark, size, payload, readText, writeText, fileSize);
-  }
+  const checksum = performBatch(iterations);
   const elapsedMs = now() - started;
   const output = JSON.stringify({
     benchmark: input.benchmark,

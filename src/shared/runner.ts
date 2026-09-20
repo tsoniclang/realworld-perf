@@ -1,21 +1,51 @@
 import { sumCsvAmounts, sumPrimes } from "./workloads.js";
 
-function perform(
+function selectWorkload(
   benchmark: string,
   size: number,
   payload: string,
   readText: (path: string) => string,
   writeText: (path: string, contents: string) => void,
   fileSize: (path: string) => number,
-): number {
-  if (benchmark === "primes") return sumPrimes(size);
-  if (benchmark === "csv") return sumCsvAmounts(payload);
-  if (benchmark === "file-read") return readText("fixture.txt").length;
-  if (benchmark === "file-write") {
-    writeText("output.txt", payload);
-    return payload.length;
+): (iterations: number) => number {
+  if (benchmark === "primes") {
+    return (iterations: number): number => {
+      let checksum = 0;
+      for (let index = 0; index < iterations; index++) checksum += sumPrimes(size);
+      return checksum;
+    };
   }
-  if (benchmark === "file-stat") return fileSize("fixture.txt");
+  if (benchmark === "csv") {
+    return (iterations: number): number => {
+      let checksum = 0;
+      for (let index = 0; index < iterations; index++) checksum += sumCsvAmounts(payload);
+      return checksum;
+    };
+  }
+  if (benchmark === "file-read") {
+    return (iterations: number): number => {
+      let checksum = 0;
+      for (let index = 0; index < iterations; index++) checksum += readText("fixture.txt").length;
+      return checksum;
+    };
+  }
+  if (benchmark === "file-write") {
+    return (iterations: number): number => {
+      let checksum = 0;
+      for (let index = 0; index < iterations; index++) {
+        writeText("output.txt", payload);
+        checksum += payload.length;
+      }
+      return checksum;
+    };
+  }
+  if (benchmark === "file-stat") {
+    return (iterations: number): number => {
+      let checksum = 0;
+      for (let index = 0; index < iterations; index++) checksum += fileSize("fixture.txt");
+      return checksum;
+    };
+  }
   throw new Error("Unknown benchmark");
 }
 
@@ -43,17 +73,13 @@ export function run(
     throw new Error("Invalid benchmark dimensions");
   }
   const payload = readText("fixture.txt");
+  const performBatch = selectWorkload(input.benchmark, input.size, payload, readText, writeText, fileSize);
   let warmupChecksum = 0;
   for (let batch = 0; batch < input.warmup; batch++) {
-    for (let index = 0; index < input.iterations; index++) {
-      warmupChecksum += perform(input.benchmark, input.size, payload, readText, writeText, fileSize);
-    }
+    warmupChecksum += performBatch(input.iterations);
   }
-  let checksum = 0;
   const started = now();
-  for (let index = 0; index < input.iterations; index++) {
-    checksum += perform(input.benchmark, input.size, payload, readText, writeText, fileSize);
-  }
+  const checksum = performBatch(input.iterations);
   const elapsedMs = now() - started;
   const output = JSON.stringify({
     benchmark: input.benchmark,
