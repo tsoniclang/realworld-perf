@@ -3,13 +3,13 @@
 Run the same TypeScript workloads on plain Node.js and on Tsonic's C# and Rust
 targets. Each report includes Node timings, not just native-to-native ratios.
 
-**Status:** all five lanes pass with the packed compiler candidates, and both C#
-lanes run as NativeAOT executables. There are 50 passing correctness checks,
-35 numeric-boundary checks and 125 passing full-size measurements. Public pins
-still need the compiler release; Rust target 0.1.1 also lacks the earlier native
-import fix. C# retains an existing nullable-local warning, and the default Rust
-native read benchmark has a documented code-placement-sensitive slowdown. See
-[verification and timings](docs/verification.md) for the results and release boundary.
+**Status:** all five lanes pass against the reviewed source-workspace candidates.
+Both C# lanes run as NativeAOT executables. The latest run has 50 passing
+correctness checks, 35 numeric-boundary checks and 175 full-size measurements.
+The committed public npm pins do not yet include these compiler/runtime changes.
+See [verification and timings](docs/verification.md) for exact revisions,
+remaining costs and the release boundary. This is not a fresh-registry release
+certification.
 
 ## The comparisons
 
@@ -66,10 +66,12 @@ npm test
 npm run bench
 ```
 
-The committed installation uses public npm packages. No sibling Tsonic checkout,
-global Tsonic or local package link is needed, but the release gap noted above
-still applies. Prepublication verification used an explicit packed target, as
-documented in the report. The npm lockfile pins the installed compiler and
+The committed installation uses public npm packages, but the release gap noted
+above still applies. The latest prepublication measurements use explicit local
+workspace links to the reviewed compiler/runtime candidates, not those public
+versions. After publishing the candidates and updating these pins, the normal
+installation needs no sibling checkout, global Tsonic or local package link.
+The npm lockfile pins the installed compiler and
 runtime packages. Native crate versions are recorded in the generated Cargo
 lockfiles and build artifact hashes; native toolchains are reported, not silently
 installed or changed. C# uses net10.0 in `tsonic.csharp-*.json`.
@@ -100,10 +102,13 @@ samples, min/max, payload hashes, tool versions and build fingerprints are retai
 - Input setup, warm-up, result serialization and correctness checks are outside it.
 - Both measured and warm-up checksums are consumed and checked. Results cannot
   be removed as unused computation.
-- Adapter calls are included. Workload selection happens before warmup and
-  measurement; the timed callback contains the complete iteration loop and
-  captures only its required inputs. Workload algorithms remain identical
-  in structure, but their target representations need not have identical costs.
+- Adapter calls are included. Workload selection and binding of fixed file
+  paths/payloads happen before warmup and measurement. Each timed iteration
+  still performs its complete read, write or stat; no results, file handles or
+  metadata are cached. All lanes use this setup contract. The Rust native
+  adapter explicitly borrows its captured strings through the existing `Ref`
+  and `ref` contracts. Workload algorithms remain identical in structure, but
+  their target representations need not have identical costs.
 - Compilation is reported separately. Process wall time includes startup, setup,
   warm-up, the workload and shutdown; it is not presented as pure startup time.
 - Both C# lanes publish Release NativeAOT for the current runtime, with Speed
