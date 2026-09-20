@@ -3,7 +3,7 @@ import { cpus, arch, platform, release, totalmem } from "node:os";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { createFixture, laneOrder, workloads } from "./catalog.mjs";
+import { createFixture, expectedChecksum, laneOrder, workloads } from "./catalog.mjs";
 import { verifyBuild } from "./artifacts.mjs";
 import { root, runCommand } from "./process.mjs";
 import { formatReport, statistics, validateResult } from "./results.mjs";
@@ -64,11 +64,11 @@ export function benchmark(options) {
           const child = runCommand(command, args, { cwd, timeout: 60000, log: resolve(cwd, "process.log") });
           if (child.stderr.trim() !== "") throw new Error(`Unexpected stderr: ${child.stderr}`);
           const result = JSON.parse(child.stdout.trim());
-          validateResult(result, input, fixture.expected);
+          validateResult(result, input, expectedChecksum(workload, fixture, lane));
           if (workload.id === "file-write" && !readFileSync(resolve(cwd, "output.txt")).equals(Buffer.from(fixture.payload))) {
             throw new Error("Written bytes differ from the UTF-8 fixture.");
           }
-          record.measurements.push({ ...result, lane: lane.id, round, processWallMs: child.wallMs, size: fixture.size, fixtureBytes: Buffer.byteLength(fixture.payload), fixtureSha256: payloadHash });
+          record.measurements.push({ ...result, lane: lane.id, stringUnit: lane.stringUnit, round, processWallMs: child.wallMs, size: fixture.size, fixtureBytes: Buffer.byteLength(fixture.payload), fixtureSha256: payloadHash });
           console.log(`${workload.id} ${lane.id} ${round + 1}/${options.samples}: ${result.elapsedMs.toFixed(3)} ms; correct`);
         } catch (error) {
           record.failures.push({ benchmark: workload.id, lane: lane.id, round, message: error.message });
