@@ -100,7 +100,9 @@ samples, min/max, payload hashes, tool versions and build fingerprints are retai
 - Input setup, warm-up, result serialization and correctness checks are outside it.
 - Both measured and warm-up checksums are consumed and checked. Results cannot
   be removed as unused computation.
-- Adapter calls and shared workload dispatch are included. They are identical
+- Adapter calls are included. Workload selection happens before warmup and
+  measurement; the timed callback contains the complete iteration loop and
+  captures only its required inputs. Workload algorithms remain identical
   in structure, but their target representations need not have identical costs.
 - Compilation is reported separately. Process wall time includes startup, setup,
   warm-up, the workload and shutdown; it is not presented as pure startup time.
