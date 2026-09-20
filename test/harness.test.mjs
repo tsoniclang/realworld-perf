@@ -13,7 +13,7 @@ test("workload selection precedes both warmup and measured iteration", () => {
   for (const directory of ["shared", "native"]) {
     const source = readFileSync(new URL(`../src/${directory}/runner.ts`, import.meta.url), "utf8");
     assert.ok(source.indexOf("const performBatch = selectWorkload(") < source.indexOf("const started = now()"));
-    assert.match(source, /const checksum = performBatch\(input\.iterations\)/u);
+    assert.ok(source.includes(`const checksum = performBatch(${directory === "native" ? "iterations" : "input.iterations"})`));
     assert.doesNotMatch(source.slice(source.indexOf("const started = now()")), /selectWorkload|payload|benchmark ===/u);
     const stat = source.slice(source.indexOf('if (benchmark === "file-stat")'), source.indexOf('throw new Error("Unknown benchmark")'));
     assert.doesNotMatch(stat, /payload|readText|writeText/u);
