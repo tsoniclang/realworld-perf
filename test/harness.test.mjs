@@ -9,6 +9,24 @@ import { runCommand } from "../scripts/process.mjs";
 import { stripTypeScriptTypes } from "node:module";
 import { createScanner } from "typescript/unstable/ast/scanner";
 
+test("workload selection precedes both warmup and measured iteration", () => {
+  for (const directory of ["shared", "native"]) {
+    const source = readFileSync(new URL(`../src/${directory}/runner.ts`, import.meta.url), "utf8");
+    assert.ok(source.indexOf("const performBatch = selectWorkload(") < source.indexOf("const started = now()"));
+    assert.ok(source.includes(`const checksum = performBatch(${directory === "native" ? "iterations" : "input.iterations"})`));
+    assert.doesNotMatch(source.slice(source.indexOf("const started = now()")), /selectWorkload|payload|benchmark ===/u);
+    const stat = source.slice(source.indexOf('if (benchmark === "file-stat")'), source.indexOf('throw new Error("Unknown benchmark")'));
+    assert.doesNotMatch(stat, /payload|readText|writeText/u);
+    assert.match(stat, /for \(let index/u);
+    assert.match(stat, /createStat\("fixture.txt"\)/u);
+    assert.match(stat, /checksum \+= stat\(\)/u);
+    const write = source.slice(source.indexOf('if (benchmark === "file-write")'), source.indexOf('if (benchmark === "file-stat")'));
+    assert.ok(write.indexOf('createWriter("output.txt", payload)') < write.indexOf("return (iterations"));
+    assert.doesNotMatch(write.slice(write.indexOf("return (iterations")), /payload|createWriter|output\.txt/u);
+    assert.match(write, /write\(\);/u);
+  }
+});
+
 test("five workloads cover all five lanes with a real Node baseline", () => {
   assert.equal(workloads.length, 5);
   assert.equal(lanes.length, 5);

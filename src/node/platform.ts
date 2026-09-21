@@ -10,10 +10,14 @@ export function readText(path: string): string {
   return readFileSync(path, "utf8");
 }
 
-export function writeText(path: string, contents: string): void {
-  writeFileSync(path, contents, "utf8");
+export function createReader(path: string): () => string {
+  return (): string => readFileSync(path, "utf8");
 }
 
-export function fileSize(path: string): number {
-  return statSync(path).size;
+export function createWriter(path: string, contents: string): () => void {
+  return (): void => { writeFileSync(path, contents, "utf8"); };
+}
+
+export function createStat(path: string): () => number {
+  return (): number => statSync(path).size;
 }

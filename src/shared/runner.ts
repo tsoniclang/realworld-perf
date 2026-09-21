@@ -1,29 +1,64 @@
 import { sumCsvAmounts, sumPrimes } from "./workloads.js";
 
-function perform(
+function selectWorkload(
   benchmark: string,
   size: number,
   payload: string,
-  readText: (path: string) => string,
-  writeText: (path: string, contents: string) => void,
-  fileSize: (path: string) => number,
-): number {
-  if (benchmark === "primes") return sumPrimes(size);
-  if (benchmark === "csv") return sumCsvAmounts(payload);
-  if (benchmark === "file-read") return readText("fixture.txt").length;
-  if (benchmark === "file-write") {
-    writeText("output.txt", payload);
-    return payload.length;
+  createReader: (path: string) => () => string,
+  createWriter: (path: string, contents: string) => () => void,
+  createStat: (path: string) => () => number,
+): (iterations: number) => number {
+  if (benchmark === "primes") {
+    return (iterations: number): number => {
+      let checksum = 0;
+      for (let index = 0; index < iterations; index++) checksum += sumPrimes(size);
+      return checksum;
+    };
   }
-  if (benchmark === "file-stat") return fileSize("fixture.txt");
+  if (benchmark === "csv") {
+    return (iterations: number): number => {
+      let checksum = 0;
+      for (let index = 0; index < iterations; index++) checksum += sumCsvAmounts(payload);
+      return checksum;
+    };
+  }
+  if (benchmark === "file-read") {
+    const read = createReader("fixture.txt");
+    return (iterations: number): number => {
+      let checksum = 0;
+      for (let index = 0; index < iterations; index++) checksum += read().length;
+      return checksum;
+    };
+  }
+  if (benchmark === "file-write") {
+    const write = createWriter("output.txt", payload);
+    const length = payload.length;
+    return (iterations: number): number => {
+      let checksum = 0;
+      for (let index = 0; index < iterations; index++) {
+        write();
+        checksum += length;
+      }
+      return checksum;
+    };
+  }
+  if (benchmark === "file-stat") {
+    const stat = createStat("fixture.txt");
+    return (iterations: number): number => {
+      let checksum = 0;
+      for (let index = 0; index < iterations; index++) checksum += stat();
+      return checksum;
+    };
+  }
   throw new Error("Unknown benchmark");
 }
 
 export function run(
   now: () => number,
   readText: (path: string) => string,
-  writeText: (path: string, contents: string) => void,
-  fileSize: (path: string) => number,
+  createReader: (path: string) => () => string,
+  createWriter: (path: string, contents: string) => () => void,
+  createStat: (path: string) => () => number,
 ): void {
   const fields = readText("input.txt").split("\n");
   if (fields.length !== 4) throw new Error("Expected four benchmark input fields");
@@ -43,17 +78,13 @@ export function run(
     throw new Error("Invalid benchmark dimensions");
   }
   const payload = readText("fixture.txt");
+  const performBatch = selectWorkload(input.benchmark, input.size, payload, createReader, createWriter, createStat);
   let warmupChecksum = 0;
   for (let batch = 0; batch < input.warmup; batch++) {
-    for (let index = 0; index < input.iterations; index++) {
-      warmupChecksum += perform(input.benchmark, input.size, payload, readText, writeText, fileSize);
-    }
+    warmupChecksum += performBatch(input.iterations);
   }
-  let checksum = 0;
   const started = now();
-  for (let index = 0; index < input.iterations; index++) {
-    checksum += perform(input.benchmark, input.size, payload, readText, writeText, fileSize);
-  }
+  const checksum = performBatch(input.iterations);
   const elapsedMs = now() - started;
   const output = JSON.stringify({
     benchmark: input.benchmark,
