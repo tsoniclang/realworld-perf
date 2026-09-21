@@ -1,8 +1,8 @@
 # Verification and performance
 
-Measured September 20, 2026. All five lanes build and execute correctly against
+Measured September 21, 2026. All five lanes build and execute correctly against
 the source-workspace candidates below. Both C# lanes are NativeAOT executables.
-This replaces the earlier numeric-only, packed-candidate measurement.
+The full matrix and a repeat on identical build artifacts both pass.
 
 ## Release boundary
 
@@ -17,16 +17,16 @@ installation. A normal user should not need our source workspace.
 
 | Repository | Measured revision |
 | --- | --- |
-| tsonic | `e0e4413e` |
-| tsonic-csharp | `4ec8d7f9` |
-| tsonic-rust | `be715e4` |
+| tsonic | `0c2e43df0` |
+| tsonic-csharp | `844ee138f` |
+| tsonic-rust | `0649b03f3` |
 | csharp-runtime | `e898865` |
 | csharp-js | `c38e9f9` |
-| csharp-nodejs | `21d9be7` |
+| csharp-nodejs | `35f441913` |
 | rust-runtime | `c3a13e6` |
-| rust-js | `c863ae5` |
+| rust-js | `9d12fc2f6` |
 | rust-nodejs | `8759e47` |
-| realworld-perf source | `c41adef` |
+| realworld-perf source | `20d1382f5` |
 
 Later report-only commits do not change these compiled sources or artifacts.
 
@@ -49,12 +49,12 @@ benchmark-induced owned String arguments in every Rust iteration. Every timed
 iteration still opens/reads, creates/truncates/writes, or queries metadata.
 No file handle, metadata, decoded result or output encoding is cached.
 
-The follow-up C# native adapter retains a `FileInfo` but calls `Refresh()` for
+The C# native adapter retains a `FileInfo` but calls `Refresh()` for
 every query. Path preparation happens during setup; filesystem queries and
-numeric conversion remain timed. Its new executable regression covers changed
+numeric conversion remain timed. Its executable regression covers changed
 size, replacement, absence, reappearance and per-query managed allocations.
-Updated performance results for this follow-up are pending below; the existing
-table remains the measured September 20 baseline, not a claim about new code.
+The actual generated adapter passes these controls with zero managed allocations
+across 10,000 warmed metadata queries. The query itself is never cached.
 
 The Rust native writer emits this operation inside its retained closure:
 
@@ -74,21 +74,25 @@ higher-order source signatures can all use a borrowed ABI.
 | Build matrix | 5/5, including both C# NativeAOT executables |
 | Small-input matrix | 50/50: all 25 cells, two rounds |
 | Executable numeric boundaries | 35/35: maximum prime input and invalid dimension controls |
-| Full-size measurements | 175/175: all 25 cells, seven rounds |
-| Full host/C#/runtime/provider bank | 4,860 checks covered by the complete run plus corrected focused visibility expectations |
-| Complete Rust target | 1,381/1,381 pass; zero failures, cancellations, skips or todos |
-| Final focused Rust allocation/lifetime/Intl bank | 20/20, including native execution and Clippy |
-| Rust core / JS / Node runtime banks | 124 / 302 / 185 native/dependency checks; 38 Node-provider checks pass |
+| Full-size measurements | 175/175 in each of two runs: all 25 cells, seven rounds; identical build artifacts |
+| Full host/C#/runtime/provider bank | 4,906 checks covered by the complete run plus the corrected missing-process test |
+| Complete Rust target | 1,386/1,386 pass; zero failures, cancellations, skips or todos |
+| Native ownership/allocation regressions | Included in the complete Rust target run, with Release execution and Clippy |
+| Rust core / JS / Node runtime banks | 124 / 303 / 185 native/dependency checks; 38 Node-provider checks pass |
 | C# Pudding | 25 projects / 48 tasks pass |
 | Rust Pudding | 31 projects / 51 tasks pass against the final target revision |
 | Tsumo C# | Three builds, 71 compiled tests, 25 application/architecture tests, NativeAOT smoke and output equivalence pass |
-| Tsumo Rust | 83 compiled tests, 28 application/architecture tests, 11 native platform tests, deterministic double generation, Clippy, release/debug equivalence and immutable lockfiles pass against the final target revision |
+| Tsumo Rust | 13 verification-harness tests, 83 compiled tests, 28 application/architecture tests, 11 native platform tests, deterministic double generation, Clippy, release/debug equivalence and immutable lockfiles pass against the final target revision |
+| Native C# metadata adapter | Fresh results after mutation/replacement/absence/reappearance; zero per-query managed allocations |
 
-The completed host run executed all 309 tasks: one task failed only two stale
-`private` versus `internal` helper expectations. The sole following C# edit
-changed those two expected modifiers; its complete three-case owning file
-passed. No product, fixture-input, configuration or assertion scope changed.
-The workspace's expectation-only rule avoids repeating the entire bank.
+The completed host run executed all 310 tasks: 309 passed. Its only failing test
+assumed PID 999999 did not exist and attempted to terminate it. The corrected
+fixture first proves absence through the native Process API and then uses a
+non-killing signal-zero probe. Both exact ESRCH assertions and the separate
+owned-child termination test remain intact. The owning test assembly was rebuilt;
+the corrected test passed 1/1. No product code changed after the complete run.
+The maintainer explicitly requested this focused rerun, not another full suite.
+The original full-run failure remains recorded rather than relabeled a clean run.
 
 Runtime counts include dependency/doc-test banks and must not be added together
 as unique tests. Rust JS retains one existing ignored upstream `regress` doctest
@@ -98,34 +102,44 @@ not a new standalone TSTS certification. Neither Tsumo source was edited.
 ## Full-size timings
 
 Median microseconds per iteration; lower is better. Seven samples per cell,
-three warm-up batches per process. The machine was 99% idle in the three samples
-before measurement. No compiler or certification suite ran concurrently.
+three warm-up batches per process. The machine was 98% idle in the three samples
+before measurement. No compiler or certification suite ran concurrently. This
+table is the complete first matrix, not the best cell selected from multiple runs.
 
 | Workload | Node | C# AOT, Node APIs | Rust, Node APIs | C# AOT, native APIs | Rust, native APIs |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Primes through 10,000 | 159.915 | 464.786 | 1,236.909 | 159.288 | 158.220 |
-| CSV, 2,000 rows | 342.068 | 246.830 | 320.073 | 226.825 | 295.448 |
-| Read UTF-8 file | 62.998 | 142.878 | 46.896 | 144.189 | 51.273 |
-| Write UTF-8 file | 106.758 | 148.492 | 86.050 | 144.685 | 86.835 |
-| File metadata | 1.269 | 3.057 | 1.011 | 2.951 | 0.914 |
+| Primes through 10,000 | 160.743 | 473.115 | 1,252.900 | 160.730 | 162.103 |
+| CSV, 2,000 rows | 348.335 | 253.479 | 265.198 | 236.783 | 266.161 |
+| Read UTF-8 file | 65.051 | 146.636 | 48.321 | 148.146 | 51.972 |
+| Write UTF-8 file | 116.749 | 172.999 | 93.165 | 174.004 | 91.291 |
+| File metadata | 1.331 | 3.138 | 1.000 | 1.879 | 0.943 |
 
 The fixture is 90,112 UTF-8 bytes / 65,536 UTF-16 units. Rust checks its native
 byte length; C# and Node check native UTF-16 length. Exact bytes are identical.
 The OS cache is warm and writes do not call fsync. These are not durable-storage
 throughput measurements. Generation and native build time remain separate.
 
-Compared with the same-machine pre-batch matrix, CSV medians improve by about
-22%/17%/26%/13% in C# Node/Rust Node/C# native/Rust native. Rust file reads improve
-by about 37%/28%. C# Node metadata drops from 6.076 to 3.057 microseconds; Rust
-metadata drops from 2.333/2.308 to 1.011/0.914 microseconds. The batch changes both
-compiler/runtime behavior and harness dispatch, so these are combined results,
-not isolated attribution to one optimization.
+Compared with the preceding September 20 candidate, Rust Node CSV drops from
+320.073 to 265.198 microseconds and Rust native CSV from 295.448 to 266.161:
+17.1% and 9.9% lower medians. Native C# metadata drops from 2.951 to 1.879
+microseconds, a 36.3% reduction. Against the original pre-batch matrix, all four
+compiled CSV lanes improve by approximately 20–31%. These are whole-batch
+measurements, not isolated attribution to one change.
 
-Not every cell improves: Rust Node primes measure 0.8% higher and C# native reads
-2.7% higher than the earlier medians. Their sample ranges overlap. This proves
-neither zero regression nor a stable causal slowdown. The native BCL read/write
-implementation is unchanged; custom alternatives that added allocations or
-small-file latency were rejected, not shipped as another path.
+The repeat uses exactly the same binaries and build fingerprint. Its Rust CSV
+medians are 266.472/264.479 microseconds and native C# metadata is 1.824.
+Write timings vary more: native C# changes from 174.004 to 163.057 and Node from
+116.749 to 110.131 without rebuilding anything. Both complete raw matrices are
+retained. Several cells are higher than the September 20 readings; these runs
+do not prove a universal zero-regression claim or identify every source of timing
+variation. Native allocation and exact-output controls provide separate evidence
+for the removed copies and allocations.
+
+The Node-API prime lanes still use the declared floating-point number carrier;
+the native lanes use explicit integer annotations. The native BCL read/write
+implementation is unchanged. Its remaining I/O cost is also present with direct
+BCL calls; custom alternatives that added allocations or small-file latency
+were rejected, not shipped as another path.
 
 ## Native costs and retained boundaries
 
@@ -138,15 +152,25 @@ small-file latency were rejected, not shipped as another path.
 | Small Rust `parseInt` | Zero allocations; large integers still promote exactly |
 | Rust ten-string join | One 329-byte allocation, equal to native slice join; previously five / 992 bytes |
 | Rust owned UTF-8 decode | Reuses its input Vec; allocation count equals native conversion |
+| Rust terminal capture of a 65,536-byte String | One callable allocation, with the same byte count as handwritten construction; no String copy |
+| Rust 10,000 proved readonly indexed parses | Zero allocations/bytes; mutation and retention controls keep owned values |
 | C# three-element literal, NativeAOT | 80 bytes versus List's 72; no temporary element array |
 | C# ten-string join, NativeAOT | 680 bytes, equal to native String.Join; previously 2,136 bytes |
 | C# text-I/O wrappers | Same allocated bytes as direct BCL calls at 0, 64, 4,096, 90,112 and 1,048,576 input characters |
+| C# selected native numeric Number conversion | Native casts across 17 carrier families; zero Int64 conversion allocations |
+| C# prepared native metadata adapter | Zero managed allocations across 10,000 fresh queries |
 
 The C# literal's remaining eight bytes are the numeric-property storage slot in
 the declared JS-array object, not another allocation. Source aliasing, identity,
 mutable captures and reentrant sort snapshots still require their owners.
 Interface-valued C# objects cannot simply become structs without possible boxing
 and changed aliasing. Ordinary Rust strings stay UTF-8; no UTF-16 scan is added.
+
+Regenerated Tsumo Rust now stores PipelineParser, TemplateParser and TomlValueReader
+as ordinary value structs with mutable receivers. There are eight ObjectHandle
+construction sites in the engine instead of eleven. This is a source-site count,
+not a measured reduction in total site-generation allocations. Neither Tsumo's
+authored source changed; aliases and cross-function transport still retain owners.
 
 Syscall tracing verifies one metadata query per timed regular-file stat in every
 lane. The C# text APIs use BCL chunking: 23 reads and eight writes for this fixture,
@@ -159,11 +183,10 @@ arbitrary authored BCL calls or add a second buffering implementation.
 - Both benchmark C# builds retain the pre-existing CS8600 at the generated
   nullable `JSON.stringify` local before its authored undefined check. It is
   neither suppressed nor described as warning-free.
-- A separate newly observed `load(Ref<string>).length` form emits `&*value`,
-  accepted by rustc but rejected by Clippy's redundant-reborrow lint. It is not
-  used by these benchmarks or applications and is recorded for follow-up, not
-  hidden by weakening a gate. The native captured-reference regression uses the
-  actual std::fs consumer and retains exact no-copy output assertions.
+- The previously reported shared-reference redundant reborrow is fixed and
+  covered by native execution and Clippy, with mutable-reference controls.
+- The harness's type-erasure equivalence test prints Node's existing
+  stripTypeScriptTypes experimental warning. No diagnostic is suppressed.
 - No universal zero-overhead or all-platform claim follows from these probes.
   Owned opaque callable signatures and source-retained values keep their
   declared contracts. No unsafe lifetime erasure, numeric speculation or
@@ -179,14 +202,18 @@ process group and no swap.
 
 Local ignored evidence:
 
-- `results/2026-09-20T21-58-09.481Z-verify.json`
-- `results/2026-09-20T21-59-30.352Z-bench.json`
+- `results/2026-09-21T08-54-55.835Z-verify.json`
+- Primary: `results/2026-09-21T08-56-26.755Z-bench.json`
+- Repeat: `results/2026-09-21T08-58-06.129Z-bench.json`
+- Pre-follow-up: `results/2026-09-20T21-59-30.352Z-bench.json`
 - Pre-batch: `results/2026-09-20T11-46-46.235Z-bench.json`
 - `../tsonic/.temp/native-allocation-performance-20260920/`
 - `../tsonic/.analysis/native-allocation-performance-20260920-140707/`
 
 The JSON retains every raw sample, range, input hash, checked result, tool version
 and build artifact hash. Input fingerprint:
-`6769ade6a901f066ec5ae1e4c8a07301e89a9100c0228b89b2858082ba0de4b9`.
-The full-size JSON SHA-256 is
-`f2d6268ad2b4ea5b4423c203c6ec2cd7a1d2a2f02025e923f4a79b383714ee76`.
+`6200608a3ff91311775baeb1914a5d89d74998793c4f9e4a2bc1214fefcd86b9`.
+The primary full-size JSON SHA-256 is
+`005af5057667420b6cd0f72c5a57932555175da765accdc9cee2c3dd383ecdd6`.
+The repeat SHA-256 is
+`41ae1ecec7a1bf7ad925f6b7b4c80e5d1c6d15df86947c1d58c92074ce8cd6df`.
