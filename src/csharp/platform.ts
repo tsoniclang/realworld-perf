@@ -18,5 +18,9 @@ export function createWriter(path: string, contents: string): () => void {
 }
 
 export function createStat(path: string): () => number {
-  return (): number => Number(new FileInfo(path).Length);
+  const info = new FileInfo(path);
+  return (): number => {
+    info.Refresh();
+    return Number(info.Length);
+  };
 }

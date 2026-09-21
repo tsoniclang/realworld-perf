@@ -49,6 +49,13 @@ benchmark-induced owned String arguments in every Rust iteration. Every timed
 iteration still opens/reads, creates/truncates/writes, or queries metadata.
 No file handle, metadata, decoded result or output encoding is cached.
 
+The follow-up C# native adapter retains a `FileInfo` but calls `Refresh()` for
+every query. Path preparation happens during setup; filesystem queries and
+numeric conversion remain timed. Its new executable regression covers changed
+size, replacement, absence, reappearance and per-query managed allocations.
+Updated performance results for this follow-up are pending below; the existing
+table remains the measured September 20 baseline, not a claim about new code.
+
 The Rust native writer emits this operation inside its retained closure:
 
 ```rust

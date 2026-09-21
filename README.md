@@ -51,6 +51,15 @@ unchanged; Rust does not convert native strings to UTF-16 for this benchmark.
 All lanes read and write identical bytes. The filesystem examples use a warm OS cache.
 Writes are buffered, without fsync; they do not measure durable storage latency.
 
+The native C# metadata adapter prepares one `FileInfo` for its fixed fixture path
+outside timing, then calls `Refresh()` and reads `Length` on every iteration.
+It does not cache metadata or an open handle. Preparing the path once is an
+explicit native-adapter choice; the working directory stays fixed during a run.
+The Node-compatible lanes still call `statSync(path)` on every iteration.
+Verification executes the generated C# adapter under NativeAOT against file
+changes, replacement, absence and reappearance, and checks that repeated queries
+allocate no managed memory.
+
 ## Install
 
 The guarded runner currently requires **Linux with a systemd user session**.
