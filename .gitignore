@@ -1,5 +1,5 @@
 # Logs
-/.analysis/
+.analysis/
 /results/
 /.tsonic/
 *.binlog
